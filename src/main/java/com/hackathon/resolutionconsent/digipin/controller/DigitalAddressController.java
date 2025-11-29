@@ -320,8 +320,6 @@ public class DigitalAddressController {
     @GetMapping("/audit-stats")
     public ResponseEntity<?> getAuditStatistics(@RequestHeader("Authorization") String authHeader) {
         try {
-            String token = authHeader.replace("Bearer ", "");
-            User user = authService.getUserFromToken(token);
 
             Map<String, Object> stats = immuDBService.getAuditStatistics();
             return ResponseEntity.ok(stats);
