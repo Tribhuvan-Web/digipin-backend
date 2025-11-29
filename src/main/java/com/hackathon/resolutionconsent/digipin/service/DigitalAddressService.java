@@ -26,6 +26,9 @@ public class DigitalAddressService {
     @Autowired
     private ConsentService consentService;
 
+    @Autowired
+    private ImmuDBService immuDBService;
+
     @Transactional
     public DigitalAddress createDigitalAddress(CreateDigitalAddressRequest request, String generatedDigipin) {
         User user = userRepository.findById(request.getUserId())
@@ -49,13 +52,30 @@ public class DigitalAddressService {
         DigitalAddress savedAddress = digitalAddressRepository.save(digitalAddress);
 
         Consent.ConsentType consentType = Consent.ConsentType.valueOf(request.getConsentType());
-        consentService.createConsent(
+        Consent consent = consentService.createConsent(
             user.getId(), 
             savedAddress.getId(), 
-            request.getUpiPin(), 
+            request.getUniPin(), 
             consentType,
             request.getConsentDurationDays()
         );
+
+        // Log to ImmuDB for tamper-proof audit trail
+        try {
+            immuDBService.logAddressCreation(
+                user.getId(),
+                fullDigitalAddress,
+                generatedDigipin,
+                request.getLatitude(),
+                request.getLongitude(),
+                request.getAddress(),
+                consent.getConsentToken(),
+                request.getConsentType()
+            );
+        } catch (Exception e) {
+            // Log error but don't fail the transaction
+            System.err.println("ImmuDB logging failed: " + e.getMessage());
+        }
 
         return savedAddress;
     }
@@ -88,6 +108,8 @@ public class DigitalAddressService {
             throw new RuntimeException("Invalid UPI PIN");
         }
 
+        String oldDigipin = digitalAddress.getGeneratedDigipin();
+
         if (request.getLatitude() != null) {
             digitalAddress.setLatitude(request.getLatitude());
             // Update the generated digipin when coordinates change
@@ -106,13 +128,30 @@ public class DigitalAddressService {
 
         // Update consent
         Consent.ConsentType consentType = Consent.ConsentType.valueOf(request.getConsentType());
-        consentService.updateConsent(
+        Consent newConsent = consentService.updateConsent(
             userId, 
             digitalAddress.getId(), 
             request.getUpiPin(), 
             consentType,
             request.getConsentDurationDays()
         );
+
+        // Log to ImmuDB for tamper-proof audit trail
+        try {
+            immuDBService.logAddressUpdate(
+                userId,
+                updatedAddress.getDigitalAddress(),
+                oldDigipin,
+                regeneratedDigipin != null ? regeneratedDigipin : oldDigipin,
+                request.getLatitude(),
+                request.getLongitude(),
+                request.getAddress(),
+                newConsent.getConsentToken()
+            );
+        } catch (Exception e) {
+            // Log error but don't fail the transaction
+            System.err.println("ImmuDB logging failed: " + e.getMessage());
+        }
 
         return updatedAddress;
     }

@@ -25,12 +25,12 @@ public class CreateDigitalAddressRequest {
     private String address; 
     
     @NotBlank(message = "UPI PIN is required")
-    @Pattern(regexp = "^[0-9]{6}$", message = "UPI PIN must be exactly 6 digits")
-    private String upiPin;
+    @Pattern(regexp = "^[0-9]{6}$", message = "UNI PIN must be exactly 6 digits")
+    private String uniPin;
     
     @NotBlank(message = "Consent type is required")
     @Pattern(regexp = "^(PERMANENT|TEMPORARY)$", message = "Consent type must be either PERMANENT or TEMPORARY")
     private String consentType;
     
-    private Integer consentDurationDays; // Optional, for TEMPORARY consent (defaults to 30 days if not provided)
+    private Integer consentDurationDays; 
 }

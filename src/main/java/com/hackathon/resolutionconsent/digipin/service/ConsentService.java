@@ -21,6 +21,9 @@ public class ConsentService {
     @Autowired
     private DigitalAddressRepository digitalAddressRepository;
 
+    @Autowired
+    private ImmuDBService immuDBService;
+
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Transactional
@@ -56,6 +59,21 @@ public class ConsentService {
         digitalAddress.setActiveConsentId(savedConsent.getId());
         digitalAddress.setHasActiveConsent(true);
         digitalAddressRepository.save(digitalAddress);
+
+        // Log to ImmuDB for tamper-proof audit trail
+        try {
+            immuDBService.logConsentCreation(
+                userId,
+                digitalAddressId,
+                digitalAddress.getDigitalAddress(),
+                savedConsent.getConsentToken(),
+                consentType.name(),
+                savedConsent.getExpiresAt()
+            );
+        } catch (Exception e) {
+            // Log error but don't fail the transaction
+            System.err.println("ImmuDB consent logging failed: " + e.getMessage());
+        }
 
         return savedConsent;
     }
@@ -122,6 +140,18 @@ public class ConsentService {
                 digitalAddress.setHasActiveConsent(false);
                 digitalAddress.setActiveConsentId(null);
                 digitalAddressRepository.save(digitalAddress);
+
+                // Log consent revocation to ImmuDB
+                try {
+                    immuDBService.logConsentRevocation(
+                        consent.getConsentToken(),
+                        digitalAddress.getDigitalAddress(),
+                        userId,
+                        "CONSENT_UPDATE"
+                    );
+                } catch (Exception e) {
+                    System.err.println("ImmuDB revocation logging failed: " + e.getMessage());
+                }
             }
         }
         

@@ -20,6 +20,7 @@ DigiPin revolutionizes how digital addresses are created, managed, and shared. I
 - 🛡️ **Aadhaar Verification** - KYC integration for trusted identity verification
 - 🔒 **JWT Authentication** - Secure API access with token-based auth
 - 🚀 **RESTful APIs** - Clean and well-documented API endpoints
+- 🔐 **ImmuDB Integration** - Tamper-proof, cryptographically verifiable audit trail
 
 ## 🏗️ Architecture
 
@@ -32,12 +33,14 @@ DigiPin revolutionizes how digital addresses are created, managed, and shared. I
 - Hibernate ORM
 
 **Database:**
-- MySQL
+- MySQL (Primary transactional data)
+- ImmuDB (Tamper-proof audit trail)
 
 **Security:**
 - JWT (JSON Web Tokens)
 - BCrypt Password Encryption
 - Spring Security
+- ImmuDB Cryptographic Verification
 
 **Additional Libraries:**
 - Lombok (Code Generation)
@@ -97,6 +100,7 @@ digipin/
 - Java 21 or higher
 - Maven 3.6+
 - MySQL 8.0+
+- Docker (for ImmuDB)
 - Git
 
 ### Installation
@@ -107,7 +111,16 @@ git clone https://github.com/Tribhuvan-Web/digipin-backend.git
 cd digipin-backend
 ```
 
-2. **Configure Database**
+2. **Start ImmuDB and MySQL using Docker**
+```bash
+# Windows PowerShell
+.\setup-immudb.ps1
+
+# OR manually with Docker Compose
+docker-compose up -d
+```
+
+3. **Configure Database**
 
 Update `src/main/resources/application.properties`:
 ```properties
@@ -115,24 +128,31 @@ spring.datasource.url=jdbc:mysql://localhost:3306/digipin_db
 spring.datasource.username=your_username
 spring.datasource.password=your_password
 spring.jpa.hibernate.ddl-auto=update
+
+# ImmuDB configuration (default values)
+immudb.host=localhost
+immudb.port=3322
+immudb.database=digipin_audit
 ```
 
-3. **Create Database**
+4. **Create Database**
 ```sql
 CREATE DATABASE digipin_db;
 ```
 
-4. **Build the project**
+5. **Build the project**
 ```bash
 mvn clean install
 ```
 
-5. **Run the application**
+6. **Run the application**
 ```bash
 mvn spring-boot:run
 ```
 
 The server will start at `http://localhost:8080`
+
+> 📖 **For detailed ImmuDB setup and tamper-proof audit features, see [IMMUDB_SETUP.md](IMMUDB_SETUP.md)**
 
 ## 📡 API Endpoints
 
@@ -265,6 +285,59 @@ Response:
   "consentExpiresAt": "Never"
 }
 ```
+
+### Audit Trail APIs (ImmuDB)
+
+#### Get Audit History
+```http
+GET /api/digital-address/audit-history/{digitalAddress}
+Authorization: Bearer <token>
+
+Response:
+{
+  "digitalAddress": "Tribhuvan_nath@home",
+  "auditHistory": [
+    {
+      "eventType": "ADDRESS_CREATED",
+      "timestamp": "2025-11-30T10:30:00",
+      "userId": 1,
+      "_txId": 42,
+      "_verified": true
+    }
+  ],
+  "totalEvents": 1,
+  "tamperProof": true,
+  "cryptographicallyVerified": true
+}
+```
+
+#### Verify Audit Entry
+```http
+POST /api/digital-address/verify-audit
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "auditKey": "address:create:Tribhuvan_nath@home:1732960200000"
+}
+
+Response:
+{
+  "verified": true,
+  "message": "Data integrity verified - No tampering detected"
+}
+```
+
+## 🔐 Tamper-Proof Audit Trail
+
+Every operation (address creation, updates, consent resolutions) is logged to **ImmuDB**, a cryptographically verifiable database:
+
+- ✅ **Immutable**: Data cannot be modified or deleted
+- ✅ **Cryptographically Verified**: Each entry is cryptographically signed
+- ✅ **Complete History**: Full audit trail of all operations
+- ✅ **Tamper Detection**: Immediate detection of any data manipulation attempts
+
+See [IMMUDB_SETUP.md](IMMUDB_SETUP.md) for detailed documentation.
 
 ## 🔐 Security Features
 
