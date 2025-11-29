@@ -13,9 +13,8 @@ public class DigitalAddress {
     private Long id;
 
     private String suffix; 
-    private String digipin; 
+    private String digitalAddress; 
     private String generatedDigipin; 
-    private String description;
     private Long userId;
     
     private Double latitude;
@@ -23,6 +22,12 @@ public class DigitalAddress {
     private String address; 
     
     private LocalDateTime createdAt;
+    
+    @Column
+    private Long activeConsentId; 
+    
+    @Column
+    private boolean hasActiveConsent = false;
     
     @PrePersist
     protected void onCreate() {

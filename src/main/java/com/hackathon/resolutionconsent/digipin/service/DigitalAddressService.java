@@ -2,12 +2,14 @@ package com.hackathon.resolutionconsent.digipin.service;
 
 import com.hackathon.resolutionconsent.digipin.dto.CreateDigitalAddressRequest;
 import com.hackathon.resolutionconsent.digipin.dto.UpdateDigitalAddressRequest;
+import com.hackathon.resolutionconsent.digipin.models.Consent;
 import com.hackathon.resolutionconsent.digipin.models.DigitalAddress;
 import com.hackathon.resolutionconsent.digipin.models.User;
 import com.hackathon.resolutionconsent.digipin.repository.DigitalAddressRepository;
 import com.hackathon.resolutionconsent.digipin.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,26 +23,41 @@ public class DigitalAddressService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private ConsentService consentService;
+
+    @Transactional
     public DigitalAddress createDigitalAddress(CreateDigitalAddressRequest request, String generatedDigipin) {
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        String fullDigitalAddress = request.getUsername() + request.getSuffix();
+        String fullDigitalAddress = request.getUsername() +"@"+ request.getSuffix();
 
-        if (digitalAddressRepository.findByDigipin(fullDigitalAddress).isPresent()) {
+        if (digitalAddressRepository.findByDigitalAddress(fullDigitalAddress).isPresent()) {
             throw new RuntimeException("Digital address already exists");
         }
 
         DigitalAddress digitalAddress = new DigitalAddress();
         digitalAddress.setUserId(user.getId());
-        digitalAddress.setDigipin(fullDigitalAddress);
+        digitalAddress.setDigitalAddress(fullDigitalAddress);
         digitalAddress.setGeneratedDigipin(generatedDigipin);
         digitalAddress.setSuffix(request.getSuffix());
         digitalAddress.setLatitude(request.getLatitude());
         digitalAddress.setLongitude(request.getLongitude());
         digitalAddress.setAddress(request.getAddress());
 
-        return digitalAddressRepository.save(digitalAddress);
+        DigitalAddress savedAddress = digitalAddressRepository.save(digitalAddress);
+
+        Consent.ConsentType consentType = Consent.ConsentType.valueOf(request.getConsentType());
+        consentService.createConsent(
+            user.getId(), 
+            savedAddress.getId(), 
+            request.getUpiPin(), 
+            consentType,
+            request.getConsentDurationDays()
+        );
+
+        return savedAddress;
     }
 
     public Optional<DigitalAddress> getDigitalAddressById(Long id) {
@@ -48,7 +65,7 @@ public class DigitalAddressService {
     }
 
     public Optional<DigitalAddress> getDigitalAddressByDigipin(String digipin) {
-        return digitalAddressRepository.findByDigipin(digipin);
+        return digitalAddressRepository.findByDigitalAddress(digipin);
     }
 
     public List<DigitalAddress> getDigitalAddressesByUserId(Long userId) {
@@ -69,6 +86,11 @@ public class DigitalAddressService {
             throw new RuntimeException("You are not authorized to update this digital address");
         }
 
+        // Verify UPI PIN before allowing update
+        if (!consentService.verifyUpiPin(digitalAddress.getId(), request.getUpiPin())) {
+            throw new RuntimeException("Invalid UPI PIN");
+        }
+
         // Update only allowed fields
         if (request.getLatitude() != null) {
             digitalAddress.setLatitude(request.getLatitude());
@@ -84,9 +106,22 @@ public class DigitalAddressService {
             digitalAddress.setAddress(request.getAddress());
         }
 
-        return digitalAddressRepository.save(digitalAddress);
+        DigitalAddress updatedAddress = digitalAddressRepository.save(digitalAddress);
+
+        // Update consent if consent type or duration has changed
+        Consent.ConsentType consentType = Consent.ConsentType.valueOf(request.getConsentType());
+        consentService.updateConsent(
+            userId, 
+            digitalAddress.getId(), 
+            request.getUpiPin(), 
+            consentType,
+            request.getConsentDurationDays()
+        );
+
+        return updatedAddress;
     }
 
+    @Transactional
     public DigitalAddress updateDigitalAddressByUserId(Long userId, UpdateDigitalAddressRequest request,
             String regeneratedDigipin) {
         List<DigitalAddress> userAddresses = digitalAddressRepository.findByUserId(userId);
@@ -95,8 +130,13 @@ public class DigitalAddressService {
             throw new RuntimeException("No digital address found for this user");
         }
 
-        // Get the first digital address for the user
-        DigitalAddress digitalAddress = userAddresses.get(0);
+          DigitalAddress digitalAddress = userAddresses.get(0);
+
+        // Verify UPI PIN before allowing update
+        if (!consentService.verifyUpiPin(digitalAddress.getId(), request.getUpiPin())) {
+            throw new RuntimeException("Invalid UPI PIN");
+        }
+
         if (request.getLatitude() != null) {
             digitalAddress.setLatitude(request.getLatitude());
             // Update the generated digipin when coordinates change
@@ -111,6 +151,18 @@ public class DigitalAddressService {
             digitalAddress.setAddress(request.getAddress());
         }
 
-        return digitalAddressRepository.save(digitalAddress);
+        DigitalAddress updatedAddress = digitalAddressRepository.save(digitalAddress);
+
+        // Update consent
+        Consent.ConsentType consentType = Consent.ConsentType.valueOf(request.getConsentType());
+        consentService.updateConsent(
+            userId, 
+            digitalAddress.getId(), 
+            request.getUpiPin(), 
+            consentType,
+            request.getConsentDurationDays()
+        );
+
+        return updatedAddress;
     }
 }

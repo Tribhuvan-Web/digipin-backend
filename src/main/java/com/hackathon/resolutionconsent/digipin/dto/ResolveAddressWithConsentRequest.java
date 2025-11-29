@@ -4,10 +4,11 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-public class ResolveAddressRequest {
-    @NotBlank(message = "Token is required")
-    private String token; 
+public class ResolveAddressWithConsentRequest {
     
     @NotBlank(message = "Digital address is required")
-    private String digitalAddress; 
+    private String digitalAddress;
+    
+    @NotBlank(message = "Consent token is required")
+    private String consentToken;
 }

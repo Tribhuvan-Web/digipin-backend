@@ -9,6 +9,6 @@ import java.util.Optional;
 
 @Repository
 public interface DigitalAddressRepository extends JpaRepository<DigitalAddress, Long> {
-    Optional<DigitalAddress> findByDigipin(String digipin);
+    Optional<DigitalAddress> findByDigitalAddress(String digipin);
     List<DigitalAddress> findByUserId(Long userId);
 }

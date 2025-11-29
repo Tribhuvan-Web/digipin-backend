@@ -22,12 +22,12 @@ public class User {
 
     
     @Column(nullable = false)
-    private String password; // Encrypted password
+    private String password; 
     
     @Column(unique = true, length = 12)
-    private String aadhaarNumber; // 12-digit Aadhaar number (verified)
+    private String aadhaarNumber; 
     
     @Column(nullable = false)
-    private boolean isAadhaarVerified = false; // Aadhaar verification status
+    private boolean isAadhaarVerified = false; 
 
 }

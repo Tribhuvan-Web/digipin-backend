@@ -3,6 +3,7 @@ package com.hackathon.resolutionconsent.digipin.controller;
 import com.hackathon.resolutionconsent.digipin.dto.AadhaarVerificationRequest;
 import com.hackathon.resolutionconsent.digipin.dto.LoginRequest;
 import com.hackathon.resolutionconsent.digipin.dto.RegisterRequest;
+import com.hackathon.resolutionconsent.digipin.dto.UserProfileDto;
 import com.hackathon.resolutionconsent.digipin.models.User;
 import com.hackathon.resolutionconsent.digipin.repository.UserRepository;
 import com.hackathon.resolutionconsent.digipin.service.AuthService;
@@ -52,7 +53,7 @@ public class AuthController {
                     throw new RuntimeException("Email already registered");
                 }
             }
-            
+
             if (userRepository.findByPhoneNumber(request.getPhoneNumber()).isPresent()) {
                 throw new RuntimeException("Phone number already registered");
             }
@@ -60,7 +61,7 @@ public class AuthController {
             userRepository.save(user);
             return ResponseEntity.status(HttpStatus.CREATED).body("registered successfully");
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("error registering");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("user already exists");
         }
     }
 
@@ -84,10 +85,9 @@ public class AuthController {
 
             UserDetailsImplement userDetails = UserDetailsImplement.build(user);
 
-            UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(
+            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     userDetails, null, userDetails.getAuthorities());
-            
+
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
             String token = jwtUtil.generateToken(userDetails);
@@ -105,9 +105,9 @@ public class AuthController {
     public ResponseEntity<?> verifyAadhaar(
             @Valid @RequestBody AadhaarVerificationRequest request) {
         try {
-            org.springframework.security.core.Authentication authentication = 
-                SecurityContextHolder.getContext().getAuthentication();
-            
+            org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext()
+                    .getAuthentication();
+
             if (authentication == null || !authentication.isAuthenticated()) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
             }
@@ -118,6 +118,19 @@ public class AuthController {
             return authService.verifyAadhaar(userId, request);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/profile")
+    public ResponseEntity<?> getUserProfile(@RequestHeader("Authorization") String authHeader) {
+        try {
+            String token = authHeader.replace("Bearer ", "");
+            User user = authService.getUserFromToken(token);
+            UserProfileDto userProfileDto = new UserProfileDto(user.getUserName(), user.getPhoneNumber(),
+                    user.getEmailId(), user.isAadhaarVerified());
+            return ResponseEntity.ok(userProfileDto);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or expired token");
         }
     }
 }

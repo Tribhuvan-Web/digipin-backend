@@ -77,4 +77,5 @@ public class AuthService {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body("aadhaar card verified , You can now  create your digital address");
     }
+
 }

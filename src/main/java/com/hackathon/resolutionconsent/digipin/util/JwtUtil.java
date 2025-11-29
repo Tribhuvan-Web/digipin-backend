@@ -45,6 +45,13 @@ public class JwtUtil {
         }
     }
 
+    public String getEmailFromJWt(String token){
+        Claims claims = Jwts.parser().verifyWith((SecretKey) key())
+        .build().parseSignedClaims(token).getPayload();
+
+        return claims.getId();
+    }
+
     public String getNameFromJwt(String token) {
         Claims claims = Jwts.parser()
                 .verifyWith((SecretKey) key())
@@ -81,10 +88,10 @@ public class JwtUtil {
                 .compact();
     }
 
-    public String generateConsentToken(Long userId, Long digitalAddressId, 
-                                       String purpose, int validityHours) {
-        long consentExpiration = validityHours * 60 * 60 * 1000L; 
-        
+    public String generateConsentToken(Long userId, Long digitalAddressId,
+            String purpose, int validityHours) {
+        long consentExpiration = validityHours * 60 * 60 * 1000L;
+
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("userId", userId)
