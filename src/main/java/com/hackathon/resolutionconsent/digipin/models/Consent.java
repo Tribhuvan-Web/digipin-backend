@@ -35,7 +35,7 @@ public class Consent {
     private boolean isActive = true;
 
     @Column(length = 6)
-    private String consentToken; // 6-character token for easy memorization 
+    private String consentToken; 
 
     @PrePersist
     protected void onCreate() {

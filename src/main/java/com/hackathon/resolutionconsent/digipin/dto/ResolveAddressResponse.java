@@ -8,7 +8,7 @@ import lombok.Data;
 public class ResolveAddressResponse {
     private Boolean success;
     private String digitalAddress;
-    private String address;  // Human-readable address
+    private String address;  
     private Double latitude;
     private Double longitude;
     private String generatedDigipin;

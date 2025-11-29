@@ -34,6 +34,5 @@ public class AadhaarMockData {
     @Column(nullable = false, length = 6)
     private String pincode;
 
-    //Optional for mobile OTP simulation
     private String mobileNumber; 
 }

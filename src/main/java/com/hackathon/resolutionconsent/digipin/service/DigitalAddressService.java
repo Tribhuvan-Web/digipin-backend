@@ -72,55 +72,6 @@ public class DigitalAddressService {
         return digitalAddressRepository.findByUserId(userId);
     }
 
-    public List<DigitalAddress> getAllDigitalAddresses() {
-        return digitalAddressRepository.findAll();
-    }
-
-    public DigitalAddress updateDigitalAddress(Long id, Long userId, UpdateDigitalAddressRequest request,
-            String regeneratedDigipin) {
-        DigitalAddress digitalAddress = digitalAddressRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Digital address not found"));
-
-        // Verify ownership
-        if (!digitalAddress.getUserId().equals(userId)) {
-            throw new RuntimeException("You are not authorized to update this digital address");
-        }
-
-        // Verify UPI PIN before allowing update
-        if (!consentService.verifyUpiPin(digitalAddress.getId(), request.getUpiPin())) {
-            throw new RuntimeException("Invalid UPI PIN");
-        }
-
-        // Update only allowed fields
-        if (request.getLatitude() != null) {
-            digitalAddress.setLatitude(request.getLatitude());
-            // Update the generated digipin when coordinates change
-            if (regeneratedDigipin != null) {
-                digitalAddress.setGeneratedDigipin(regeneratedDigipin);
-            }
-        }
-        if (request.getLongitude() != null) {
-            digitalAddress.setLongitude(request.getLongitude());
-        }
-        if (request.getAddress() != null) {
-            digitalAddress.setAddress(request.getAddress());
-        }
-
-        DigitalAddress updatedAddress = digitalAddressRepository.save(digitalAddress);
-
-        // Update consent if consent type or duration has changed
-        Consent.ConsentType consentType = Consent.ConsentType.valueOf(request.getConsentType());
-        consentService.updateConsent(
-            userId, 
-            digitalAddress.getId(), 
-            request.getUpiPin(), 
-            consentType,
-            request.getConsentDurationDays()
-        );
-
-        return updatedAddress;
-    }
-
     @Transactional
     public DigitalAddress updateDigitalAddressByUserId(Long userId, UpdateDigitalAddressRequest request,
             String regeneratedDigipin) {

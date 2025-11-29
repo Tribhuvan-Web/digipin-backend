@@ -1,6 +1,5 @@
 package com.hackathon.resolutionconsent.digipin.controller;
 
-import com.hackathon.resolutionconsent.digipin.dto.ConsentResponse;
 import com.hackathon.resolutionconsent.digipin.dto.CreateDigitalAddressRequest;
 import com.hackathon.resolutionconsent.digipin.dto.ResolveAddressWithConsentRequest;
 import com.hackathon.resolutionconsent.digipin.dto.UpdateDigitalAddressRequest;
@@ -54,16 +53,7 @@ public class DigitalAddressController {
 
             DigitalAddress createdAddress = digitalAddressService.createDigitalAddress(request, generatedDigipin);
 
-            Optional<Consent> consent = consentService.getActiveConsent(createdAddress.getId());
-
-            if (consent.isPresent()) {
-                ConsentResponse response = new ConsentResponse(
-                        consent.get().getConsentToken(),
-                        consent.get().getConsentType().toString(),
-                        consent.get().getExpiresAt() != null ? consent.get().getExpiresAt().toString() : "Never",
-                        "Digital address created successfully with consent");
-                return ResponseEntity.status(HttpStatus.CREATED).body(response);
-            }
+             consentService.getActiveConsent(createdAddress.getId());
 
             return ResponseEntity.status(HttpStatus.CREATED).body("Digital address created successfully");
         } catch (IllegalArgumentException e) {
@@ -88,11 +78,9 @@ public class DigitalAddressController {
         try {
             String token = authHeader.replace("Bearer ", "");
             User user = authService.getUserFromToken(token);
-
             String regeneratedDigipin = getDigiPin(request.getLatitude(), request.getLongitude());
             digitalAddressService.updateDigitalAddressByUserId(user.getId(), request, regeneratedDigipin);
-
-            return ResponseEntity.status(HttpStatus.OK).body("Digital address and consent updated successfully");
+            return ResponseEntity.status(HttpStatus.OK).body("Digital address updated successfully");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         } catch (RuntimeException e) {
@@ -110,36 +98,28 @@ public class DigitalAddressController {
             @Valid @RequestBody ResolveAddressWithConsentRequest request) {
         try {
             Optional<Consent> consentOpt = consentService.getConsentByToken(request.getConsentToken());
-
             if (consentOpt.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body("Invalid or expired consent token");
             }
-
             Consent consent = consentOpt.get();
-
             Optional<DigitalAddress> addressOpt = digitalAddressService.getDigitalAddressByDigipin(
                     request.getDigitalAddress());
-
             if (addressOpt.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body("Digital address not found");
             }
-
             DigitalAddress address = addressOpt.get();
-
             if (!consent.getDigitalAddressId().equals(address.getId())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body("Consent token does not match digital address");
             }
-
             Map<String, Object> response = new HashMap<>();
             response.put("digitalAddress", address.getDigitalAddress());
             response.put("generatedDigipin", address.getGeneratedDigipin());
             response.put("latitude", address.getLatitude());
             response.put("longitude", address.getLongitude());
             response.put("address", address.getAddress());
-
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
