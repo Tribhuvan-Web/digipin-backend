@@ -42,26 +42,40 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         try {
+            if (userRepository.findByUserName(request.getUserName()).isPresent()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("Username already taken");
+            }
+
+            if (request.getEmailId() != null && !request.getEmailId().trim().isEmpty()) {
+                if (userRepository.findByEmailId(request.getEmailId()).isPresent()) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body("Email already registered");
+                }
+            }
+
+            if (userRepository.findByPhoneNumber(request.getPhoneNumber()).isPresent()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("Phone number already registered");
+            }
+
             User user = new User();
             user.setUserName(request.getUserName());
             user.setPassword(passwordEncoder.encode(request.getPassword()));
             user.setEmailId(request.getEmailId());
             user.setPhoneNumber(request.getPhoneNumber());
 
-            if (request.getEmailId() != null && !request.getEmailId().trim().isEmpty()) {
-                if (userRepository.findByEmailId(request.getEmailId()).isPresent()) {
-                    throw new RuntimeException("Email already registered");
-                }
-            }
-
-            if (userRepository.findByPhoneNumber(request.getPhoneNumber()).isPresent()) {
-                throw new RuntimeException("Phone number already registered");
-            }
-
             userRepository.save(user);
-            return ResponseEntity.status(HttpStatus.CREATED).body("registered successfully");
+            return ResponseEntity.status(HttpStatus.CREATED).body("Registered successfully");
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Registration failed: Duplicate entry detected");
+        } catch (jakarta.validation.ConstraintViolationException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Username must contain only alphanumeric characters and underscores");
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("user already exists");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Registration failed: " + e.getMessage());
         }
     }
 

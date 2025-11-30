@@ -188,6 +188,102 @@ public class ImmuDBService {
         }
     }
 
+    public String logAddressRating(String digitalAddress, Long userId, Integer rating, String feedback) {
+        try {
+            Map<String, Object> auditData = new HashMap<>();
+            auditData.put("eventType", "ADDRESS_RATED");
+            auditData.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME));
+            auditData.put("digitalAddress", digitalAddress);
+            auditData.put("userId", userId);
+            auditData.put("rating", rating);
+            auditData.put("feedback", feedback != null ? feedback : "");
+            auditData.put("version", "1.0");
+            auditData.put("_txId", txIdCounter++);
+
+            String key = String.format("address:rating:%s:%d",
+                    digitalAddress, System.currentTimeMillis());
+            String value = objectMapper.writeValueAsString(auditData);
+
+            storeAuditEntry(key, value);
+
+            logger.info("✅ Address rating logged - Key: {} - Rating: {}", key, rating);
+            return key;
+
+        } catch (Exception e) {
+            logger.error("Failed to log address rating: {}", e.getMessage(), e);
+            return "LOGGING_FAILED";
+        }
+    }
+
+    public String logConfidenceScoreUpdate(String digitalAddress, String aiuIdentifier, 
+            String fulfillmentStatus, Double oldScore, Double newScore, String comments) {
+        try {
+            Map<String, Object> auditData = new HashMap<>();
+            auditData.put("eventType", "CONFIDENCE_SCORE_UPDATED");
+            auditData.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME));
+            auditData.put("digitalAddress", digitalAddress);
+            auditData.put("aiuIdentifier", aiuIdentifier);
+            auditData.put("fulfillmentStatus", fulfillmentStatus);
+            auditData.put("oldScore", oldScore);
+            auditData.put("newScore", newScore);
+            auditData.put("scoreChange", newScore - oldScore);
+            auditData.put("comments", comments != null ? comments : "");
+            auditData.put("version", "1.0");
+            auditData.put("_txId", txIdCounter++);
+
+            String key = String.format("address:confidence:%s:%d",
+                    digitalAddress, System.currentTimeMillis());
+            String value = objectMapper.writeValueAsString(auditData);
+
+            storeAuditEntry(key, value);
+
+            logger.info("✅ Confidence score update logged - Key: {} - AIU: {} - Status: {} - Score: {} → {}", 
+                    key, aiuIdentifier, fulfillmentStatus, oldScore, newScore);
+            return key;
+
+        } catch (Exception e) {
+            logger.error("Failed to log confidence score update: {}", e.getMessage(), e);
+            return "LOGGING_FAILED";
+        }
+    }
+
+    public String logAavaVerification(String digitalAddress, String agentId, String verificationStatus,
+            Boolean locationConfirmed, String verificationNotes, Double oldScore, Double newScore,
+            Double verifiedLatitude, Double verifiedLongitude) {
+        try {
+            Map<String, Object> auditData = new HashMap<>();
+            auditData.put("eventType", "AAVA_VERIFICATION");
+            auditData.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME));
+            auditData.put("digitalAddress", digitalAddress);
+            auditData.put("agentId", agentId);
+            auditData.put("verificationStatus", verificationStatus);
+            auditData.put("locationConfirmed", locationConfirmed);
+            auditData.put("verificationNotes", verificationNotes != null ? verificationNotes : "");
+            auditData.put("oldConfidenceScore", oldScore);
+            auditData.put("newConfidenceScore", newScore);
+            auditData.put("scoreChange", newScore - oldScore);
+            auditData.put("verifiedLatitude", verifiedLatitude);
+            auditData.put("verifiedLongitude", verifiedLongitude);
+            auditData.put("verificationType", "AAVA");
+            auditData.put("version", "1.0");
+            auditData.put("_txId", txIdCounter++);
+
+            String key = String.format("address:aava:%s:%d",
+                    digitalAddress, System.currentTimeMillis());
+            String value = objectMapper.writeValueAsString(auditData);
+
+            storeAuditEntry(key, value);
+
+            logger.info("✅ AAVA verification logged - Key: {} - Agent: {} - Status: {} - Score: {} → {}", 
+                    key, agentId, verificationStatus, oldScore, newScore);
+            return key;
+
+        } catch (Exception e) {
+            logger.error("Failed to log AAVA verification: {}", e.getMessage(), e);
+            return "LOGGING_FAILED";
+        }
+    }
+
     public Map<String, Object> verifyAuditEntry(String key) {
         try {
             String value = auditStore.get(key);

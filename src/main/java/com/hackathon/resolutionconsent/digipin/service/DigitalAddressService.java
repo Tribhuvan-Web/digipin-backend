@@ -1,6 +1,8 @@
 package com.hackathon.resolutionconsent.digipin.service;
 
+import com.hackathon.resolutionconsent.digipin.dto.AavaVerificationRequest;
 import com.hackathon.resolutionconsent.digipin.dto.CreateDigitalAddressRequest;
+import com.hackathon.resolutionconsent.digipin.dto.ServiceFulfillmentFeedbackRequest;
 import com.hackathon.resolutionconsent.digipin.dto.UpdateDigitalAddressRequest;
 import com.hackathon.resolutionconsent.digipin.models.Consent;
 import com.hackathon.resolutionconsent.digipin.models.DigitalAddress;
@@ -8,9 +10,11 @@ import com.hackathon.resolutionconsent.digipin.models.User;
 import com.hackathon.resolutionconsent.digipin.repository.DigitalAddressRepository;
 import com.hackathon.resolutionconsent.digipin.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,7 +38,7 @@ public class DigitalAddressService {
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        String fullDigitalAddress = request.getUsername() +"@"+ request.getSuffix();
+        String fullDigitalAddress = request.getUsername() + "@" + request.getSuffix();
 
         if (digitalAddressRepository.findByDigitalAddress(fullDigitalAddress).isPresent()) {
             throw new RuntimeException("Digital address already exists");
@@ -48,30 +52,31 @@ public class DigitalAddressService {
         digitalAddress.setLatitude(request.getLatitude());
         digitalAddress.setLongitude(request.getLongitude());
         digitalAddress.setAddress(request.getAddress());
+        digitalAddress.setAddressName(request.getAddressName());
+        digitalAddress.setPinCode(request.getPincode());
+        digitalAddress.setPurpose(request.getPurpose());
 
         DigitalAddress savedAddress = digitalAddressRepository.save(digitalAddress);
 
         Consent.ConsentType consentType = Consent.ConsentType.valueOf(request.getConsentType());
         Consent consent = consentService.createConsent(
-            user.getId(), 
-            savedAddress.getId(), 
-            request.getUniPin(), 
-            consentType,
-            request.getConsentDurationDays()
-        );
+                user.getId(),
+                savedAddress.getId(),
+                request.getUniPin(),
+                consentType,
+                request.getConsentDurationDays());
 
         // Log to ImmuDB for tamper-proof audit trail
         try {
             immuDBService.logAddressCreation(
-                user.getId(),
-                fullDigitalAddress,
-                generatedDigipin,
-                request.getLatitude(),
-                request.getLongitude(),
-                request.getAddress(),
-                consent.getConsentToken(),
-                request.getConsentType()
-            );
+                    user.getId(),
+                    fullDigitalAddress,
+                    generatedDigipin,
+                    request.getLatitude(),
+                    request.getLongitude(),
+                    request.getAddress(),
+                    consent.getConsentToken(),
+                    request.getConsentType());
         } catch (Exception e) {
             // Log error but don't fail the transaction
             System.err.println("ImmuDB logging failed: " + e.getMessage());
@@ -80,8 +85,8 @@ public class DigitalAddressService {
         return savedAddress;
     }
 
-    public Optional<DigitalAddress> getDigitalAddressById(Long id) {
-        return digitalAddressRepository.findById(id);
+    public Optional<DigitalAddress> getDigitalAddressByDigitaladdress(String digitalAddress) {
+        return digitalAddressRepository.findByDigitalAddress(digitalAddress);
     }
 
     public Optional<DigitalAddress> getDigitalAddressByDigipin(String digipin) {
@@ -101,9 +106,8 @@ public class DigitalAddressService {
             throw new RuntimeException("No digital address found for this user");
         }
 
-          DigitalAddress digitalAddress = userAddresses.get(0);
+        DigitalAddress digitalAddress = userAddresses.get(0);
 
-        // Verify UPI PIN before allowing update
         if (!consentService.verifyUpiPin(digitalAddress.getId(), request.getUpiPin())) {
             throw new RuntimeException("Invalid UPI PIN");
         }
@@ -112,7 +116,6 @@ public class DigitalAddressService {
 
         if (request.getLatitude() != null) {
             digitalAddress.setLatitude(request.getLatitude());
-            // Update the generated digipin when coordinates change
             if (regeneratedDigipin != null) {
                 digitalAddress.setGeneratedDigipin(regeneratedDigipin);
             }
@@ -126,33 +129,93 @@ public class DigitalAddressService {
 
         DigitalAddress updatedAddress = digitalAddressRepository.save(digitalAddress);
 
-        // Update consent
         Consent.ConsentType consentType = Consent.ConsentType.valueOf(request.getConsentType());
         Consent newConsent = consentService.updateConsent(
-            userId, 
-            digitalAddress.getId(), 
-            request.getUpiPin(), 
-            consentType,
-            request.getConsentDurationDays()
-        );
+                userId,
+                digitalAddress.getId(),
+                request.getUpiPin(),
+                consentType,
+                request.getConsentDurationDays());
 
-        // Log to ImmuDB for tamper-proof audit trail
         try {
             immuDBService.logAddressUpdate(
-                userId,
-                updatedAddress.getDigitalAddress(),
-                oldDigipin,
-                regeneratedDigipin != null ? regeneratedDigipin : oldDigipin,
-                request.getLatitude(),
-                request.getLongitude(),
-                request.getAddress(),
-                newConsent.getConsentToken()
-            );
+                    userId,
+                    updatedAddress.getDigitalAddress(),
+                    oldDigipin,
+                    regeneratedDigipin != null ? regeneratedDigipin : oldDigipin,
+                    request.getLatitude(),
+                    request.getLongitude(),
+                    request.getAddress(),
+                    newConsent.getConsentToken());
         } catch (Exception e) {
-            // Log error but don't fail the transaction
             System.err.println("ImmuDB logging failed: " + e.getMessage());
         }
 
         return updatedAddress;
+    }
+
+    @Transactional
+    public void updateConfidenceScore(DigitalAddress address,
+            ServiceFulfillmentFeedbackRequest.FulfillmentStatus status) {
+        double currentScore = address.getConfidenceScore();
+        double adjustment = 0.0;
+
+        switch (status) {
+            case SUCCESS:
+                adjustment = 10.0;
+                break;
+            case FAILURE:
+                adjustment = -15.0;
+                break;
+            case NEUTRAL:
+                adjustment = -5.0;
+                break;
+        }
+
+        double newScore = currentScore + adjustment;
+        newScore = Math.max(0.0, Math.min(100.0, newScore)); 
+
+        address.setConfidenceScore(Math.round(newScore * 100.0) / 100.0); 
+        address.setTotalFulfillments(address.getTotalFulfillments() + 1);
+
+        digitalAddressRepository.save(address);
+    }
+
+    @Transactional
+    public void processAavaVerification(DigitalAddress address, AavaVerificationRequest request) {
+        if (request.getVerificationStatus() == AavaVerificationRequest.VerificationStatus.VERIFIED
+                && request.getLocationConfirmed()) {
+
+            address.setIsAavaVerified(true);
+            address.setVerificationType(DigitalAddress.VerificationType.AAVA);
+            address.setAavaAgentId(request.getAgentId());
+            address.setAavaVerifiedAt(LocalDateTime.now());
+            address.setAavaVerificationNotes(request.getVerificationNotes());
+            address.setRequiresAavaVerification(false); 
+
+            double currentScore = address.getConfidenceScore();
+            double boostedScore = Math.max(90.0, Math.min(95.0, currentScore + 40.0));
+            address.setConfidenceScore(Math.round(boostedScore * 100.0) / 100.0);
+
+        } else if (request.getVerificationStatus() == AavaVerificationRequest.VerificationStatus.VERIFICATION_FAILED) {
+            address.setIsAavaVerified(false);
+            address.setAavaAgentId(request.getAgentId());
+            address.setAavaVerifiedAt(LocalDateTime.now());
+            address.setAavaVerificationNotes(request.getVerificationNotes());
+
+            address.setConfidenceScore(Math.max(0.0, address.getConfidenceScore() - 30.0));
+
+        } else if (request.getVerificationStatus() == AavaVerificationRequest.VerificationStatus.REQUIRES_CORRECTION) {
+            address.setAavaVerificationNotes(request.getVerificationNotes());
+            address.setConfidenceScore(Math.max(0.0, address.getConfidenceScore() - 10.0));
+        }
+
+        digitalAddressRepository.save(address);
+    }
+
+    @Transactional
+    public void flagForAavaVerification(DigitalAddress address, String reason) {
+        address.setRequiresAavaVerification(true);
+        digitalAddressRepository.save(address);
     }
 }

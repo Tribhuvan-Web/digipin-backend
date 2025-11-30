@@ -23,9 +23,12 @@ public class CreateDigitalAddressRequest {
     private Double longitude;
     
     private String address; 
+    private String addressName;
+    private String pincode;
+    private String purpose;
     
-    @NotBlank(message = "UPI PIN is required")
-    @Pattern(regexp = "^[0-9]{6}$", message = "UNI PIN must be exactly 6 digits")
+    @NotBlank(message = "PIN is required")
+    @Pattern(regexp = "^[0-9]{6}$", message = "PIN must be exactly 6 digits")
     private String uniPin;
     
     @NotBlank(message = "Consent type is required")
