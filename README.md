@@ -10,14 +10,14 @@
 
 ## 🌟 Overview
 
-DigiPin revolutionizes how digital addresses are created, managed, and shared in India. It combines location-based digital addressing with a secure consent mechanism, allowing users to share their addresses with authorized parties using a simple 6-digit UPI PIN. The system integrates multiple verification layers and provides cryptographically verifiable audit trails for complete transparency and trust.
+DigiPin revolutionizes how digital addresses are created, managed, and shared in India. It combines location-based digital addressing with a secure consent mechanism, allowing users to share their addresses with authorized parties using a simple 6-digit DA PIN. The system integrates multiple verification layers and provides cryptographically verifiable audit trails for complete transparency and trust.
 
 ### 🎯 Key Features
 
 #### Core Functionality
 - 🗺️ **Location-Based Digital Addresses** - Generate unique digital addresses from GPS coordinates (username@suffix format)
 - 📍 **DigiPin Generation** - Proprietary grid-based algorithm (4x4) for India-specific location codes (XXX-XXX-XXXX format)
-- 🔐 **UPI PIN Authentication** - Secure 6-digit PIN for address access control (BCrypt hashed)
+- 🔐 **DA PIN Authentication** - Secure 6-digit PIN for address access control (BCrypt hashed)
 - 🔑 **Consent Management** - Granular control over who can access your address with token-based sharing
 - ⏰ **Flexible Consent Types** 
   - **PERMANENT**: Never expires, ideal for trusted long-term relationships
@@ -37,7 +37,6 @@ DigiPin revolutionizes how digital addresses are created, managed, and shared in
 - 🔒 **JWT Authentication** - Stateless token-based authentication with 343-hour expiration
 - 🔐 **BCrypt Encryption** - Industry-standard password and PIN hashing (strength: 10)
 - 🛡️ **Spring Security** - Comprehensive security filter chain with role-based access control
-- 🚦 **Rate Limiting** - Bucket4j integration for API throttling and DDoS protection
 - 🔐 **ImmuDB Integration** - Tamper-proof, cryptographically verifiable audit trail
   - All address operations logged
   - Immutable audit history
@@ -46,7 +45,6 @@ DigiPin revolutionizes how digital addresses are created, managed, and shared in
 
 #### API & Integration
 - 🚀 **RESTful APIs** - Clean, well-documented endpoints with 5 specialized controllers
-- 📱 **QR Code Generation** - ZXing integration for address sharing via QR codes
 - 🌐 **CORS Support** - Configurable cross-origin resource sharing
 - 📊 **Comprehensive Audit APIs** - Query audit history, verify integrity, view statistics
 - 🔧 **AIU Integration** - Authorized Integrator Unit APIs for address resolution
@@ -303,8 +301,6 @@ mvn spring-boot:run
 
 The server will start at `http://localhost:8080`
 
-> 📖 **For detailed ImmuDB setup and tamper-proof audit features, see [IMMUDB_SETUP.md](IMMUDB_SETUP.md)**
-
 ## 📡 API Endpoints
 
 ### 🔐 Authentication APIs (`/api/auth`)
@@ -385,7 +381,7 @@ Content-Type: application/json
   "latitude": 28.6139,
   "longitude": 77.2090,
   "address": "Connaught Place, New Delhi, India",
-  "upiPin": "123456",
+  "daPin": "123456",
   "consentType": "PERMANENT",        // or "TEMPORARY"
   "consentDurationDays": 30          // Required for TEMPORARY
 }
@@ -462,7 +458,7 @@ Content-Type: application/json
   "latitude": 28.7041,
   "longitude": 77.1025,
   "address": "Updated Address, Delhi",
-  "upiPin": "123456",               // Required for verification
+  "daPin": "123456",               // Required for verification
   "consentType": "TEMPORARY",
   "consentDurationDays": 60
 }
@@ -573,7 +569,7 @@ Content-Type: application/json
   "name": "John Doe",
   "phoneNumber": "9876543210",
   "digitalAddress": "Tribhuvan_nath@home",
-  "upiPin": "123456"
+  "daPin": "123456"
 }
 
 Response (201 CREATED):
@@ -593,7 +589,7 @@ Content-Type: application/json
 
 {
   "digitalAddress": "Tribhuvan_nath@home",
-  "upiPin": "123456"
+  "daPin": "123456"
 }
 
 Response (200 OK):
@@ -874,10 +870,9 @@ POST /api/audit/verify-audit
 ├─────────────────────────────────────────────────────────┤
 │ Layer 6: Ownership Validation (User Access Control)    │
 ├─────────────────────────────────────────────────────────┤
-│ Layer 7: Rate Limiting (Bucket4j)                      │
+│ Layer 7: ImmuDB Audit (Tamper Detection)               │
 ├─────────────────────────────────────────────────────────┤
-│ Layer 8: ImmuDB Audit (Tamper Detection)               │
-└─────────────────────────────────────────────────────────┘
+
 ```
 
 ### 1. Authentication & Authorization
@@ -909,7 +904,7 @@ POST /api/audit/verify-audit
 - No plain-text storage
 - One-way hashing (cannot be reversed)
 
-**UPI PIN Security**
+**Digital PIN Security**
 - 6-digit PIN for consent verification
 - BCrypt hashed (never stored plain)
 - Verified on every address resolution
@@ -935,15 +930,7 @@ POST /api/audit/verify-audit
 - Expired consents automatically deactivated
 - Active consent tracking
 
-### 4. Rate Limiting & DDoS Protection
-
-**Bucket4j Integration**
-- Request throttling per IP/user
-- Configurable rate limits
-- Prevents brute-force attacks
-- Protects against DDoS
-
-### 5. Audit & Compliance
+### 4. Audit & Compliance
 
 **ImmuDB Tamper-Proof Logging**
 - All critical operations logged
@@ -957,7 +944,7 @@ POST /api/audit/verify-audit
 - Traceability (transaction IDs)
 - Non-repudiation (cannot deny actions)
 
-### 6. Secure Verification Mechanisms
+### 5. Secure Verification Mechanisms
 
 **Aadhaar Verification**
 - Mock integration with 50+ test records
@@ -972,7 +959,7 @@ POST /api/audit/verify-audit
 - Confidence score boost (50 → 80)
 - Tamper-proof logging
 
-### 7. API Security
+### 6. API Security
 
 **Input Validation**
 - Jakarta Validation annotations
@@ -986,7 +973,7 @@ POST /api/audit/verify-audit
 - Logging for debugging
 - User-friendly error responses
 
-### 8. Configuration Security
+### 7. Configuration Security
 
 **Secure Properties**
 ```properties
@@ -1010,7 +997,7 @@ immudb.password=<secure-password>
 - Enable HTTPS in production
 - Regular security audits
 
-### 9. Security Recommendations for Production
+### 8. Security Recommendations for Production
 
 - ✅ Enable HTTPS/TLS
 - ✅ Use environment variables for secrets
@@ -1308,7 +1295,7 @@ Examples:
 │ id      │         │ id              │         │ id       │
 │userName │         │ userId (FK)     │         │ userId   │
 │aadhaar  │         │ digitalAddress  │         │ token    │
-└─────────┘         │ digipin         │         │ upiPin   │
+└─────────┘         │ digipin         │         │ daPin    │
                     │ coordinates     │         │ type     │
                     │ confidenceScore │         │ expires  │
                     │ isAavaVerified  │         └──────────┘
@@ -1364,17 +1351,17 @@ Examples:
          "suffix": "home",
          "latitude": 28.6139,
          "longitude": 77.2090,
-         "upiPin": "123456",
+         "daPin": "123456",
          "consentType": "PERMANENT"
        }
        Output: Tribhuvan_nath@home (DigiPin: FC9-823-7654)
    
 4. Place Order on Flipkart
-   └─→ Customer shares: Tribhuvan_nath@home + UPI PIN (123456)
+   └─→ Customer shares: Tribhuvan_nath@home + DA PIN (123456)
    
 5. Flipkart (AIU) Resolves Address
    └─→ POST /api/aiu/resolve-with-consent
-       Input: { "digitalAddress": "Tribhuvan_nath@home", "upiPin": "123456" }
+       Input: { "digitalAddress": "Tribhuvan_nath@home", "daPin": "123456" }
        Output: { lat: 28.6139, lon: 77.2090, address: "...", score: 50 }
        
 6. Delivery Executed
@@ -1461,7 +1448,7 @@ Examples:
    
 2. Emergency System Resolves Address
    └─→ POST /api/aiu/resolve-with-consent
-       Input: { "digitalAddress": "Tribhuvan_nath@home", "upiPin": "123456" }
+       Input: { "digitalAddress": "Tribhuvan_nath@home", "daPin": "123456" }
        Output: Immediate GPS coordinates
        
 3. Dispatch Ambulance
@@ -2051,9 +2038,7 @@ Found a bug or have a feature request? Please open an issue:
 
 - **Spring Team** - For the amazing Spring Boot framework
 - **ImmuDB Team** - For the tamper-proof database solution
-- **ZXing Team** - For the QR code generation library
-- **UIDAI** - For Aadhaar verification inspiration
-- **Open Source Community** - For continuous support and contributions
+- **Aaditya kumar** - For continuous support and contributions
 
 ## 🏆 Project Stats
 
@@ -2079,15 +2064,11 @@ Found a bug or have a feature request? Please open an issue:
 - ✅ **AIU Integration**: Complete
 - ✅ **Audit Trail (ImmuDB)**: Complete
 - ✅ **Confidence Scoring**: Complete
-- ✅ **QR Code Generation**: Complete
-- ✅ **Rate Limiting**: Complete
-- ✅ **Docker Support**: Complete
 
 ## 🔮 Future Enhancements
 
 ### Planned Features
 - [ ] **Mobile App** - iOS & Android applications
-- [ ] **Web Dashboard** - User management portal
 - [ ] **Real-time Notifications** - WebSocket integration
 - [ ] **Multi-language Support** - i18n for regional languages
 - [ ] **Advanced Analytics** - User behavior & usage patterns
@@ -2096,11 +2077,8 @@ Found a bug or have a feature request? Please open an issue:
 - [ ] **Multi-tenancy** - Support for multiple organizations
 - [ ] **OAuth2 Integration** - Social login (Google, Facebook)
 - [ ] **SMS/Email Notifications** - OTP verification
-- [ ] **Geofencing** - Address boundary validation
 - [ ] **API Gateway** - Centralized API management
-- [ ] **GraphQL API** - Alternative to REST
 - [ ] **Microservices Architecture** - Service decomposition
-- [ ] **Kubernetes Deployment** - Container orchestration
 
 ### Performance Improvements
 - [ ] Redis caching for frequently accessed data
@@ -2118,29 +2096,3 @@ Found a bug or have a feature request? Please open an issue:
 - [ ] Web Application Firewall (WAF)
 
 ---
-
-<div align="center">
-
-## 🌟 Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=Tribhuvan-Web/digipin-backend&type=Date)](https://star-history.com/#Tribhuvan-Web/digipin-backend&Date)
-
----
-
-### Built with ❤️ for Hackathon 2025
-
-**Making Digital Addresses Accessible, Secure, and Trusted**
-
----
-
-![Java](https://img.shields.io/badge/Java-21-orange?style=for-the-badge&logo=openjdk)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.8-brightgreen?style=for-the-badge&logo=spring-boot)
-![MySQL](https://img.shields.io/badge/MySQL-8.0-blue?style=for-the-badge&logo=mysql)
-![ImmuDB](https://img.shields.io/badge/ImmuDB-Latest-green?style=for-the-badge)
-![Docker](https://img.shields.io/badge/Docker-Ready-blue?style=for-the-badge&logo=docker)
-
----
-
-**[⬆ Back to Top](#-digipin---digital-address-with-consent-management-system)**
-
-</div>
