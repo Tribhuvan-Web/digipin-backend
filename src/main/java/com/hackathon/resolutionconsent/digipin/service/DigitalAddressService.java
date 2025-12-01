@@ -9,8 +9,10 @@ import com.hackathon.resolutionconsent.digipin.models.DigitalAddress;
 import com.hackathon.resolutionconsent.digipin.models.User;
 import com.hackathon.resolutionconsent.digipin.repository.DigitalAddressRepository;
 import com.hackathon.resolutionconsent.digipin.repository.UserRepository;
+
+import jakarta.persistence.EntityNotFoundException;
+
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,7 +68,6 @@ public class DigitalAddressService {
                 consentType,
                 request.getConsentDurationDays());
 
-        // Log to ImmuDB for tamper-proof audit trail
         try {
             immuDBService.logAddressCreation(
                     user.getId(),
@@ -78,11 +79,33 @@ public class DigitalAddressService {
                     consent.getConsentToken(),
                     request.getConsentType());
         } catch (Exception e) {
-            // Log error but don't fail the transaction
             System.err.println("ImmuDB logging failed: " + e.getMessage());
         }
 
         return savedAddress;
+    }
+
+    public void deleteDigitalAddress(String digitalAddress, Long userId) {
+        Optional<DigitalAddress> addressOpt = digitalAddressRepository.findByDigitalAddress(digitalAddress);
+
+        if (addressOpt.isEmpty()) {
+            throw new IllegalArgumentException("Digital address not found: " + digitalAddress);
+        }
+
+        DigitalAddress address = addressOpt.get();
+
+        // Check if user owns this address
+        if (!address.getUserId().equals(userId)) {
+            throw new IllegalStateException("You can only delete your own digital addresses");
+        }
+
+        // Check if address is AAVA verified
+        if (address.getIsAavaVerified() != null && address.getIsAavaVerified()) {
+            throw new IllegalStateException(
+                    "Cannot delete AAVA verified address. AAVA verified addresses are protected and cannot be deleted.");
+        }
+
+        digitalAddressRepository.delete(address);
     }
 
     public Optional<DigitalAddress> getDigitalAddressByDigitaladdress(String digitalAddress) {
@@ -173,9 +196,9 @@ public class DigitalAddressService {
         }
 
         double newScore = currentScore + adjustment;
-        newScore = Math.max(0.0, Math.min(100.0, newScore)); 
+        newScore = Math.max(0.0, Math.min(100.0, newScore));
 
-        address.setConfidenceScore(Math.round(newScore * 100.0) / 100.0); 
+        address.setConfidenceScore(Math.round(newScore * 100.0) / 100.0);
         address.setTotalFulfillments(address.getTotalFulfillments() + 1);
 
         digitalAddressRepository.save(address);
@@ -191,7 +214,7 @@ public class DigitalAddressService {
             address.setAavaAgentId(request.getAgentId());
             address.setAavaVerifiedAt(LocalDateTime.now());
             address.setAavaVerificationNotes(request.getVerificationNotes());
-            address.setRequiresAavaVerification(false); 
+            address.setRequiresAavaVerification(false);
 
             double currentScore = address.getConfidenceScore();
             double boostedScore = Math.max(90.0, Math.min(95.0, currentScore + 40.0));

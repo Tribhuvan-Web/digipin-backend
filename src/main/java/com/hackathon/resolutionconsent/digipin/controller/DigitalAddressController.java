@@ -14,7 +14,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -69,15 +71,16 @@ public class DigitalAddressController {
             String token = authHeader.replace("Bearer ", "");
             User user = authService.getUserFromToken(token);
 
-            Optional<DigitalAddress> addressOpt = digitalAddressService.getDigitalAddressByDigitaladdress(digitalAddress);
-            
+            Optional<DigitalAddress> addressOpt = digitalAddressService
+                    .getDigitalAddressByDigitaladdress(digitalAddress);
+
             if (addressOpt.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body("Digital address not found");
             }
 
             DigitalAddress address = addressOpt.get();
-            
+
             if (!address.getUserId().equals(user.getId())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body("You can only view your own digital addresses");
@@ -95,6 +98,31 @@ public class DigitalAddressController {
         String token = authHeader.replace("Bearer ", "");
         User user = authService.getUserFromToken(token);
         return digitalAddressService.getDigitalAddressesByUserId(user.getId());
+    }
+
+    @GetMapping("/digipin")
+    public ResponseEntity<?> getDigipin(@RequestParam double lon,
+            @RequestParam double lat) {
+        return ResponseEntity.ok(getDigiPin(lat, lon));
+    }
+
+    @DeleteMapping("/delete")
+    public ResponseEntity<?> deleteDigitalAddress(
+            @RequestParam String digitalAddress,
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            String token = authHeader.replace("Bearer ", "");
+            User user = authService.getUserFromToken(token);
+            digitalAddressService.deleteDigitalAddress(digitalAddress, user.getId());
+            return ResponseEntity.ok("Digital address deleted successfully");
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error deleting digital address: " + e.getMessage());
+        }
     }
 
     @PutMapping("/update")
@@ -116,6 +144,54 @@ public class DigitalAddressController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("try again: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/flag-for-aava")
+    public ResponseEntity<?> flagForAavaVerification(
+            @RequestBody Map<String, String> request,
+            @RequestHeader("Authorization") String authHeader) {
+        try {
+            String digitalAddress = request.get("digitalAddress");
+            String reason = request.get("reason");
+
+            if (digitalAddress == null || digitalAddress.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("Digital address is required");
+            }
+
+            Optional<DigitalAddress> addressOpt = digitalAddressService.getDigitalAddressByDigipin(digitalAddress);
+            if (addressOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body("Digital address not found");
+            }
+
+            DigitalAddress address = addressOpt.get();
+            if (address.getIsAavaVerified()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body("Aava already verified for this account");
+            }
+            String token = authHeader.replace("Bearer ", "");
+            User user = authService.getUserFromToken(token);
+
+            if (!address.getUserId().equals(user.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body("You can only flag your own digital addresses");
+            }
+
+            digitalAddressService.flagForAavaVerification(address, reason);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Digital address flagged for AAVA verification");
+            response.put("digitalAddress", address.getDigitalAddress());
+            response.put("requiresAavaVerification", true);
+            response.put("reason", reason);
+            response.put("note", "An AAVA agent will be assigned for physical verification");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error flagging for AAVA verification: " + e.getMessage());
         }
     }
 

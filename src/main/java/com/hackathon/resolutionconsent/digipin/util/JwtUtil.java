@@ -26,6 +26,10 @@ public class JwtUtil {
     @Value("${jwt.expiration}")
     private long expirationTime;
 
+    public String getSecret() {
+        return secret;
+    }
+
     public boolean isAuthTokenValid(String token) {
         try {
             Claims claims = extractClaims(token);

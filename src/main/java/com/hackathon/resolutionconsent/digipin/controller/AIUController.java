@@ -14,8 +14,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.hackathon.resolutionconsent.digipin.dto.ResolveAddressWithConsentRequest;
 import com.hackathon.resolutionconsent.digipin.dto.ServiceFulfillmentFeedbackRequest;
+import com.hackathon.resolutionconsent.digipin.dto.UserAddressRequest;
 import com.hackathon.resolutionconsent.digipin.models.Consent;
 import com.hackathon.resolutionconsent.digipin.models.DigitalAddress;
+import com.hackathon.resolutionconsent.digipin.models.UserAddress;
+import com.hackathon.resolutionconsent.digipin.repository.UserAddressRepository;
 import com.hackathon.resolutionconsent.digipin.service.ConsentService;
 import com.hackathon.resolutionconsent.digipin.service.DigitalAddressService;
 import com.hackathon.resolutionconsent.digipin.service.ImmuDBService;
@@ -29,6 +32,9 @@ public class AIUController {
         private static final double CONFIDENCE_THRESHOLD = 70.0;
 
         @Autowired
+        private UserAddressRepository userAddressRepository;
+
+        @Autowired
         private DigitalAddressService digitalAddressService;
 
         @Autowired
@@ -37,6 +43,18 @@ public class AIUController {
         @Autowired
         private ConsentService consentService;
 
+        @PostMapping("/store")
+        public ResponseEntity<?> storeUserAddress(@Valid @RequestBody UserAddressRequest request) {
+                UserAddress userAddress = new UserAddress();
+                userAddress.setName(request.getName());
+                userAddress.setPhoneNumber(request.getPhoneNumber());
+                userAddress.setDigitalAddress(request.getDigitalAddress());
+                userAddress.setUpiPin(request.getUpiPin());
+
+                UserAddress saved = userAddressRepository.save(userAddress);
+                return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+        }
+
         @PostMapping("/resolve-with-consent")
         public ResponseEntity<?> resolveAddressWithConsent(
                         @Valid @RequestBody ResolveAddressWithConsentRequest request) {
@@ -44,7 +62,6 @@ public class AIUController {
                         Optional<DigitalAddress> addressOpt = digitalAddressService.getDigitalAddressByDigipin(
                                         request.getDigitalAddress());
                         if (addressOpt.isEmpty()) {
-                                // Log failed resolution attempt to ImmuDB
                                 immuDBService.logAddressResolution(
                                                 request.getDigitalAddress(),
                                                 "N/A",

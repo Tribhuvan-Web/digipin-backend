@@ -11,21 +11,18 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.hackathon.resolutionconsent.digipin.dto.AavaVerificationRequest;
 import com.hackathon.resolutionconsent.digipin.models.DigitalAddress;
-import com.hackathon.resolutionconsent.digipin.models.User;
-import com.hackathon.resolutionconsent.digipin.service.AuthService;
 import com.hackathon.resolutionconsent.digipin.service.DigitalAddressService;
 import com.hackathon.resolutionconsent.digipin.service.ImmuDBService;
 
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/aava")
 
 public class AAVAController {
 
@@ -34,9 +31,6 @@ public class AAVAController {
 
     @Autowired
     private ImmuDBService immuDBService;
-
-    @Autowired
-    private AuthService authService;
 
     @PostMapping("/aava-verify")
     public ResponseEntity<?> submitAavaVerification(
@@ -51,6 +45,10 @@ public class AAVAController {
 
             DigitalAddress address = addressOpt.get();
             double oldScore = address.getConfidenceScore();
+
+            if (address.getIsAavaVerified()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("address is already verified with the aava");
+            }
 
             digitalAddressService.processAavaVerification(address, request);
 
@@ -125,53 +123,4 @@ public class AAVAController {
                     .body("Error retrieving AAVA status: " + e.getMessage());
         }
     }
-
-    @PostMapping("/flag-for-aava")
-    public ResponseEntity<?> flagForAavaVerification(
-            @RequestBody Map<String, String> request,
-            @RequestHeader("Authorization") String authHeader) {
-        try {
-            String digitalAddress = request.get("digitalAddress");
-            String reason = request.get("reason");
-
-            if (digitalAddress == null || digitalAddress.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body("Digital address is required");
-            }
-
-            Optional<DigitalAddress> addressOpt = digitalAddressService.getDigitalAddressByDigipin(digitalAddress);
-            if (addressOpt.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body("Digital address not found");
-            }
-
-            DigitalAddress address = addressOpt.get();
-            if (address.getIsAavaVerified()) {
-                return ResponseEntity.status(HttpStatus.CONFLICT).body("Aava already verified for this account");
-            }
-            String token = authHeader.replace("Bearer ", "");
-            User user = authService.getUserFromToken(token);
-
-            if (!address.getUserId().equals(user.getId())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body("You can only flag your own digital addresses");
-            }
-
-            digitalAddressService.flagForAavaVerification(address, reason);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "Digital address flagged for AAVA verification");
-            response.put("digitalAddress", address.getDigitalAddress());
-            response.put("requiresAavaVerification", true);
-            response.put("reason", reason);
-            response.put("note", "An AAVA agent will be assigned for physical verification");
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error flagging for AAVA verification: " + e.getMessage());
-        }
-    }
-
 }
