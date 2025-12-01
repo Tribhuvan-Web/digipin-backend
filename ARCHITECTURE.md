@@ -121,15 +121,15 @@ DigiPin is a comprehensive digital address resolution system with consent-based 
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     REST CONTROLLERS                         │
+│                     REST CONTROLLERS                        │
 ├─────────────────────────────────────────────────────────────┤
-│                                                              │
+│                                                             │
 │  AuthController (/api/auth)                                 │
 │  ├── POST   /register         → User Registration           │
-│  ├── POST   /login            → Authentication               │
-│  ├── POST   /verify-aadhaar   → KYC Verification           │
+│  ├── POST   /login            → Authentication              │
+│  ├── POST   /verify-aadhaar   → KYC Verification            │
 │  └── GET    /profile          → User Profile                │
-│                                                              │
+│                                                             │
 │  DigitalAddressController (/api/digital-address)            │
 │  ├── POST   /create           → Create Address              │
 │  ├── GET    /{address}        → Get Address Details         │
@@ -137,23 +137,23 @@ DigiPin is a comprehensive digital address resolution system with consent-based 
 │  ├── GET    /digipin          → Generate DigiPin            │
 │  ├── PUT    /update           → Update Address              │
 │  ├── DELETE /delete           → Delete Address              │
-│  └── POST   /flag-for-aava    → Flag for Verification      │
-│                                                              │
+│  └── POST   /flag-for-aava    → Flag for Verification       │
+│                                                             │
 │  AAVAController (/api/aava)                                 │
 │  ├── POST   /aava-verify      → Submit Verification         │
 │  └── GET    /aava-status/{id} → Get Verification Status     │
-│                                                              │
+│                                                             │
 │  AIUController (/api/aiu)                                   │
 │  ├── POST   /store            → Store User Address          │
 │  ├── POST   /resolve-with-consent → Resolve Address         │
 │  └── POST   /feedback         → Submit Fulfillment Feedback │
-│                                                              │
+│                                                             │
 │  AuditController (/api/audit)                               │
 │  ├── GET    /audit-history/{address} → Get Audit Logs       │
 │  ├── POST   /verify-audit    → Verify Data Integrity        │
 │  ├── GET    /audit-stats      → Audit Statistics            │
 │  └── GET    /confidence-score/{id} → Get Trust Score        │
-│                                                              │
+│                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -161,44 +161,44 @@ DigiPin is a comprehensive digital address resolution system with consent-based 
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      SERVICE LAYER                           │
+│                      SERVICE LAYER                          │
 ├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  AuthService                                                 │
-│  ├── User Registration & Authentication                      │
+│                                                             │
+│  AuthService                                                │
+│  ├── User Registration & Authentication                     │
 │  ├── Aadhaar Verification (Mock Integration)                │
-│  ├── JWT Token Management                                    │
-│  └── User Profile Management                                 │
-│                                                              │
-│  DigitalAddressService                                       │
-│  ├── Digital Address CRUD Operations                         │
+│  ├── JWT Token Management                                   │
+│  └── User Profile Management                                │
+│                                                             │
+│  DigitalAddressService                                      │
+│  ├── Digital Address CRUD Operations                        │
 │  ├── DigiPin Generation (Grid-Based Algorithm)              │
-│  ├── Address Validation & Management                         │
+│  ├── Address Validation & Management                        │
 │  ├── AAVA Verification Processing                           │
 │  ├── Confidence Score Updates                               │
 │  └── Address Ownership Verification                         │
-│                                                              │
-│  ConsentService                                              │
+│                                                             │
+│  ConsentService                                             │
 │  ├── Consent Creation & Management                          │
-│  ├── UPI PIN Verification (BCrypt)                          │
+│  ├── DA  PIN Verification (BCrypt)                          │
 │  ├── Consent Token Generation                               │
 │  ├── Expiry Management (PERMANENT/TEMPORARY)                │
 │  └── Active Consent Retrieval                               │
-│                                                              │
-│  ImmuDBService                                               │
+│                                                             │
+│  ImmuDBService                                              │
 │  ├── Address Creation Audit Logging                         │
 │  ├── Address Resolution Logging                             │
 │  ├── AAVA Verification Logging                              │
 │  ├── Confidence Score Update Logging                        │
 │  ├── Audit History Retrieval                                │
 │  ├── Cryptographic Verification                             │
-│  └── Tamper Detection                                        │
-│                                                              │
-│  CustomUserDetailsService                                    │
+│  └── Tamper Detection                                       │
+│                                                             │
+│  CustomUserDetailsService                                   │
 │  ├── Spring Security Integration                            │
 │  ├── User Authentication Support                            │
-│  └── UserDetails Loading                                     │
-│                                                              │
+│  └── UserDetails Loading                                    │
+│                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -592,11 +592,11 @@ DigiPin is a comprehensive digital address resolution system with consent-based 
 │ Client  │                                          │  Server  │
 └────┬────┘                                          └─────┬────┘
      │                                                     │
-     │  1. POST /api/auth/login                           │
-     │    { emailOrPhone, password }                      │
+     │  1. POST /api/auth/login                            │
+     │    { emailOrPhone, password }                       │
      ├────────────────────────────────────────────────────>│
      │                                                     │
-     │                               2. Validate credentials │
+     │                              2. Validate credentials│
      │                                  (BCrypt password)  │
      │                                                     │
      │                               3. Generate JWT Token │
@@ -604,106 +604,76 @@ DigiPin is a comprehensive digital address resolution system with consent-based 
      │                                  - Payload: userId  │
      │                                  - Signature: HMAC  │
      │                                                     │
-     │  4. JWT Token                                      │
+     │  4. JWT Token                                       │
      │<────────────────────────────────────────────────────┤
-     │    { "token": "eyJhbGc..." }                       │
+     │    { "token": "eyJhbGc..." }                        │
      │                                                     │
-     │  5. Subsequent API calls                           │
-     │     Authorization: Bearer <token>                  │
+     │  5. Subsequent API calls                            │
+     │     Authorization: Bearer <token>                   │
      ├────────────────────────────────────────────────────>│
      │                                                     │
-     │                               6. JwtAuthenticationFilter│
+     │                           6. JwtAuthenticationFilter│
      │                                  validates token    │
      │                                                     │
-     │                               7. SecurityContextHolder│
+     │                             7. SecurityContextHolder│
      │                                  sets authentication│
      │                                                     │
-     │  8. Response                                       │
+     │  8. Response                                        │
      │<────────────────────────────────────────────────────┤
-     │                                                     │
+                                                     
 ```
 
 ### 2. Security Layers
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     SECURITY LAYERS                          │
+│                     SECURITY LAYERS                         │
 ├─────────────────────────────────────────────────────────────┤
-│                                                              │
+│                                                             │
 │  Layer 1: Transport Security                                │
 │  └─ HTTPS/TLS (Production)                                  │
-│                                                              │
+│                                                             │
 │  Layer 2: CORS Configuration                                │
 │  ├─ Allowed Origins: Configured domains                     │
 │  ├─ Allowed Methods: GET, POST, PUT, DELETE                 │
 │  └─ Exposed Headers: Authorization                          │
-│                                                              │
+│                                                             │
 │  Layer 3: JWT Authentication                                │
 │  ├─ Algorithm: HMAC-SHA256                                  │
 │  ├─ Token Expiration: 343 hours (~14 days)                  │
 │  ├─ Secret Key: 512-bit (stored securely)                   │
 │  └─ Claims: userId, username, email, authorities            │
-│                                                              │
+│                                                             │
 │  Layer 4: Spring Security                                   │
 │  ├─ Security Filter Chain                                   │
 │  ├─ JWT Authentication Filter (before UsernamePassword)     │
 │  ├─ Authentication Manager                                  │
 │  └─ UserDetailsService (custom implementation)              │
-│                                                              │
+│                                                             │
 │  Layer 5: Password Security                                 │
 │  ├─ BCrypt Hashing (strength: 10)                           │
 │  ├─ Salt: Random per password                               │
 │  └─ No plain-text storage                                   │
-│                                                              │
+│                                                             │
 │  Layer 6: Consent Security                                  │
 │  ├─ 6-digit UPI PIN                                         │
 │  ├─ BCrypt hashed (never stored plain)                      │
 │  ├─ Token-based sharing                                     │
 │  └─ Time-based expiry                                       │
-│                                                              │
+│                                                             │
 │  Layer 7: Data Privacy                                      │
 │  ├─ Aadhaar masking (only last 4 digits visible)            │
 │  ├─ PII protection                                          │
 │  └─ Ownership validation (users can only access their data) │
-│                                                              │
-│  Layer 8: Rate Limiting                                     │
-│  ├─ Bucket4j integration                                    │
-│  ├─ Request throttling                                      │
-│  └─ DDoS protection                                         │
-│                                                              │
-│  Layer 9: Audit Security (ImmuDB)                           │
+│                                                             │
+│  Layer 8: Audit Security (ImmuDB)                           │
 │  ├─ Immutable audit logs                                    │
 │  ├─ Cryptographic verification                              │
 │  ├─ Tamper detection                                        │
 │  └─ Complete traceability                                   │
-│                                                              │
+│                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
-
-### 3. Authorization Matrix
-
-```
-┌────────────────────┬─────────┬─────────┬──────┬──────┬───────┐
-│     Endpoint       │  Public │  User   │ AAVA │ AIU  │ Admin │
-├────────────────────┼─────────┼─────────┼──────┼──────┼───────┤
-│ POST /register     │    ✓    │    ✓    │   ✓  │   ✓  │   ✓   │
-│ POST /login        │    ✓    │    ✓    │   ✓  │   ✓  │   ✓   │
-│ POST /verify-aadhaar│        │    ✓    │      │      │   ✓   │
-│ GET  /profile      │         │    ✓    │      │      │   ✓   │
-│ POST /create       │         │    ✓*   │      │      │   ✓   │
-│ GET  /{address}    │         │    ✓**  │      │      │   ✓   │
-│ PUT  /update       │         │    ✓**  │      │      │   ✓   │
-│ DELETE /delete     │         │    ✓**  │      │      │   ✓   │
-│ POST /flag-for-aava│         │    ✓**  │      │      │   ✓   │
-│ POST /aava-verify  │         │         │   ✓  │      │   ✓   │
-│ GET  /aava-status  │    ✓    │    ✓    │   ✓  │   ✓  │   ✓   │
-│ POST /aiu/store    │         │         │      │   ✓  │   ✓   │
-│ POST /resolve      │         │         │      │   ✓  │   ✓   │
-│ POST /aiu/feedback │         │         │      │   ✓  │   ✓   │
-│ GET  /audit-history│         │    ✓**  │      │      │   ✓   │
-│ POST /verify-audit │         │    ✓    │   ✓  │   ✓  │   ✓   │
-│ GET  /audit-stats  │         │    ✓    │   ✓  │      │   ✓   │
-└────────────────────┴─────────┴─────────┴──────┴──────┴───────┘
 
 Notes:
 * Requires Aadhaar verification
@@ -857,13 +827,6 @@ Notes:
 │  Validation:                                                 │
 │  └─ Jakarta Validation: Bean validation                     │
 │                                                              │
-│  QR Code Generation:                                         │
-│  └─ ZXing (Google): 3.5.3                                   │
-│     ├─ core: Core library                                   │
-│     └─ javase: Java SE extensions                           │
-│                                                              │
-│  Rate Limiting:                                              │
-│  └─ Bucket4j: 8.7.0                                         │
 │                                                              │
 │  Utility Libraries:                                          │
 │  ├─ Lombok: Code generation (@Data, @Builder, etc.)         │
@@ -880,66 +843,6 @@ Notes:
 │  Testing:                                                    │
 │  └─ Spring Boot Test: Testing framework                     │
 │                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🚀 Deployment Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                   DEPLOYMENT DIAGRAM                         │
-└─────────────────────────────────────────────────────────────┘
-
-                    ┌─────────────────┐
-                    │   Load Balancer │
-                    │   (Nginx/HAProxy)│
-                    └────────┬─────────┘
-                             │
-        ┌────────────────────┼────────────────────┐
-        │                    │                    │
-┌───────▼────────┐  ┌────────▼───────┐  ┌────────▼───────┐
-│   DigiPin      │  │   DigiPin      │  │   DigiPin      │
-│   Instance 1   │  │   Instance 2   │  │   Instance N   │
-│  (Spring Boot) │  │  (Spring Boot) │  │  (Spring Boot) │
-└───────┬────────┘  └────────┬───────┘  └────────┬───────┘
-        │                    │                    │
-        └────────────────────┼────────────────────┘
-                             │
-                    ┌────────▼─────────┐
-                    │  Database Layer  │
-                    │                  │
-                    │  ┌────────────┐  │
-                    │  │   MySQL    │  │
-                    │  │ (Master)   │  │
-                    │  └─────┬──────┘  │
-                    │        │         │
-                    │  ┌─────▼──────┐  │
-                    │  │   MySQL    │  │
-                    │  │ (Replica)  │  │
-                    │  └────────────┘  │
-                    │                  │
-                    │  ┌────────────┐  │
-                    │  │  ImmuDB    │  │
-                    │  │  (Audit)   │  │
-                    │  └────────────┘  │
-                    └──────────────────┘
-
-Docker Compose Setup:
-┌─────────────────────────────────────────────────────────────┐
-│  Service: digipin-immudb                                     │
-│  ├─ Image: codenotary/immudb:latest                         │
-│  ├─ Ports: 3322 (gRPC), 9497 (HTTP)                         │
-│  ├─ Volume: immudb-data:/var/lib/immudb                     │
-│  └─ Health Check: HTTP GET /api/v1/health                   │
-│                                                              │
-│  Service: digipin-mysql                                      │
-│  ├─ Image: mysql:8.0                                        │
-│  ├─ Port: 3306                                              │
-│  ├─ Volume: mysql-data:/var/lib/mysql                       │
-│  ├─ Init Script: aadhaar_mock_data.sql                      │
-│  └─ Health Check: mysqladmin ping                           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
