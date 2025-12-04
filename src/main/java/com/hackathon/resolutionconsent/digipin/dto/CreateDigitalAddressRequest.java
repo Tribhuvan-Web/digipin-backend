@@ -13,6 +13,8 @@ public class CreateDigitalAddressRequest {
     
     private String digipin;
     
+    private String digitalAddress; 
+    
     @NotBlank(message = "Suffix is required")
     private String suffix; 
     

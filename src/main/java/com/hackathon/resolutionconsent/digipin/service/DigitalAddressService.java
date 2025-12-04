@@ -3,14 +3,11 @@ package com.hackathon.resolutionconsent.digipin.service;
 import com.hackathon.resolutionconsent.digipin.dto.AavaVerificationRequest;
 import com.hackathon.resolutionconsent.digipin.dto.CreateDigitalAddressRequest;
 import com.hackathon.resolutionconsent.digipin.dto.ServiceFulfillmentFeedbackRequest;
-import com.hackathon.resolutionconsent.digipin.dto.UpdateDigitalAddressRequest;
 import com.hackathon.resolutionconsent.digipin.models.Consent;
 import com.hackathon.resolutionconsent.digipin.models.DigitalAddress;
 import com.hackathon.resolutionconsent.digipin.models.User;
 import com.hackathon.resolutionconsent.digipin.repository.DigitalAddressRepository;
 import com.hackathon.resolutionconsent.digipin.repository.UserRepository;
-
-import jakarta.persistence.EntityNotFoundException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -68,6 +65,8 @@ public class DigitalAddressService {
                 consentType,
                 request.getConsentDurationDays());
 
+        updateActiveConsentStatus(savedAddress, consent);
+
         try {
             immuDBService.logAddressCreation(
                     user.getId(),
@@ -94,12 +93,10 @@ public class DigitalAddressService {
 
         DigitalAddress address = addressOpt.get();
 
-        // Check if user owns this address
         if (!address.getUserId().equals(userId)) {
             throw new IllegalStateException("You can only delete your own digital addresses");
         }
 
-        // Check if address is AAVA verified
         if (address.getIsAavaVerified() != null && address.getIsAavaVerified()) {
             throw new IllegalStateException(
                     "Cannot delete AAVA verified address. AAVA verified addresses are protected and cannot be deleted.");
@@ -121,17 +118,21 @@ public class DigitalAddressService {
     }
 
     @Transactional
-    public DigitalAddress updateDigitalAddressByUserId(Long userId, UpdateDigitalAddressRequest request,
-            String regeneratedDigipin) {
-        List<DigitalAddress> userAddresses = digitalAddressRepository.findByUserId(userId);
-
-        if (userAddresses.isEmpty()) {
-            throw new RuntimeException("No digital address found for this user");
+    public DigitalAddress updateDigitalAddressByDigitalAddress(Long userId, String digitalAddressStr, 
+            CreateDigitalAddressRequest request, String regeneratedDigipin) {
+        Optional<DigitalAddress> addressOpt = digitalAddressRepository.findByDigitalAddress(digitalAddressStr);
+        
+        if (addressOpt.isEmpty()) {
+            throw new RuntimeException("Digital address not found: " + digitalAddressStr);
+        }
+        
+        DigitalAddress digitalAddress = addressOpt.get();
+        
+        if (!digitalAddress.getUserId().equals(userId)) {
+            throw new RuntimeException("You can only update your own digital addresses");
         }
 
-        DigitalAddress digitalAddress = userAddresses.get(0);
-
-        if (!consentService.verifyUpiPin(digitalAddress.getId(), request.getUpiPin())) {
+        if (!consentService.verifyUpiPin(digitalAddress.getId(), request.getUniPin())) {
             throw new RuntimeException("Invalid UPI PIN");
         }
 
@@ -149,16 +150,29 @@ public class DigitalAddressService {
         if (request.getAddress() != null) {
             digitalAddress.setAddress(request.getAddress());
         }
-
+        if (request.getAddressName() != null) {
+            digitalAddress.setAddressName(request.getAddressName());
+        }
+        if (request.getPincode() != null) {
+            digitalAddress.setPinCode(request.getPincode());
+        }
+        if (request.getPurpose() != null) {
+            digitalAddress.setPurpose(request.getPurpose());
+        }
+        if (request.getSuffix() != null) {
+            digitalAddress.setSuffix(request.getSuffix());
+        }
         DigitalAddress updatedAddress = digitalAddressRepository.save(digitalAddress);
 
         Consent.ConsentType consentType = Consent.ConsentType.valueOf(request.getConsentType());
         Consent newConsent = consentService.updateConsent(
                 userId,
                 digitalAddress.getId(),
-                request.getUpiPin(),
+                request.getUniPin(),
                 consentType,
                 request.getConsentDurationDays());
+
+        updateActiveConsentStatus(updatedAddress, newConsent);
 
         try {
             immuDBService.logAddressUpdate(
@@ -175,6 +189,37 @@ public class DigitalAddressService {
         }
 
         return updatedAddress;
+    }
+
+    @Transactional
+    public void updateActiveConsentStatus(DigitalAddress address, Consent consent) {
+        if (consent == null) {
+            address.setHasActiveConsent(false);
+            digitalAddressRepository.save(address);
+            return;
+        }
+
+        boolean isActive = false;
+        boolean isExpired = false;
+
+        if (consent.getConsentType() == Consent.ConsentType.PERMANENT) {
+            isActive = true;
+            isExpired = false;
+        } else if (consent.getConsentType() == Consent.ConsentType.TEMPORARY) {
+            LocalDateTime now = LocalDateTime.now();
+            if (consent.getExpiresAt() != null) {
+                isExpired = now.isAfter(consent.getExpiresAt());
+                isActive = !isExpired && consent.isActive();
+            } else {
+                isActive = consent.isActive();
+                isExpired = false;
+            }
+        }
+
+        address.setHasActiveConsent(isActive);
+        address.setActiveConsentId(consent.getId());
+        
+        digitalAddressRepository.save(address);
     }
 
     @Transactional

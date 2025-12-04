@@ -1,7 +1,8 @@
 package com.hackathon.resolutionconsent.digipin.controller;
 
 import com.hackathon.resolutionconsent.digipin.dto.CreateDigitalAddressRequest;
-import com.hackathon.resolutionconsent.digipin.dto.UpdateDigitalAddressRequest;
+import com.hackathon.resolutionconsent.digipin.dto.DigitalAddressWithStatusDto;
+import com.hackathon.resolutionconsent.digipin.models.Consent;
 import com.hackathon.resolutionconsent.digipin.models.DigitalAddress;
 import com.hackathon.resolutionconsent.digipin.models.User;
 import com.hackathon.resolutionconsent.digipin.service.AuthService;
@@ -18,6 +19,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 @RestController
 @RequestMapping("/api/digital-address")
@@ -94,10 +97,80 @@ public class DigitalAddressController {
     }
 
     @GetMapping
-    public List<DigitalAddress> getDigitalAddresses(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getDigitalAddresses(@RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         User user = authService.getUserFromToken(token);
-        return digitalAddressService.getDigitalAddressesByUserId(user.getId());
+        List<DigitalAddress> addresses = digitalAddressService.getDigitalAddressesByUserId(user.getId());
+        
+        List<DigitalAddressWithStatusDto> response = addresses.stream()
+                .map(address -> buildAddressWithStatus(address))
+                .toList();
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    private DigitalAddressWithStatusDto buildAddressWithStatus(DigitalAddress address) {
+        Optional<Consent> consentOpt = consentService.getActiveConsent(address.getId());
+        
+        boolean isActive = false;
+        boolean isExpired = true;
+        String linkStatus = "EXPIRED";
+        String consentType = "NONE";
+        boolean isPermanent = false;
+        boolean isTemporary = false;
+        LocalDateTime expiresAt = null;
+        Long daysRemaining = null;
+        
+        if (consentOpt.isPresent()) {
+            Consent consent = consentOpt.get();
+            consentType = consent.getConsentType().name();
+            isPermanent = consent.getConsentType() == Consent.ConsentType.PERMANENT;
+            isTemporary = consent.getConsentType() == Consent.ConsentType.TEMPORARY;
+            expiresAt = consent.getExpiresAt();
+            
+            if (isPermanent) {
+                isActive = true;
+                isExpired = false;
+                linkStatus = "ACTIVE";
+            } else if (isTemporary) {
+                // Check if temporary link has expired
+                if (expiresAt != null && expiresAt.isAfter(LocalDateTime.now())) {
+                    isActive = true;
+                    isExpired = false;
+                    linkStatus = "ACTIVE";
+                    daysRemaining = ChronoUnit.DAYS.between(LocalDateTime.now(), expiresAt);
+                } else {
+                    isActive = false;
+                    isExpired = true;
+                    linkStatus = "EXPIRED";
+                    daysRemaining = 0L;
+                }
+            }
+        }
+        
+        return DigitalAddressWithStatusDto.builder()
+                .id(address.getId())
+                .digitalAddress(address.getDigitalAddress())
+                .generatedDigipin(address.getGeneratedDigipin())
+                .suffix(address.getSuffix())
+                .addressName(address.getAddressName())
+                .address(address.getAddress())
+                .pinCode(address.getPinCode())
+                .purpose(address.getPurpose())
+                .latitude(address.getLatitude())
+                .longitude(address.getLongitude())
+                .createdAt(address.getCreatedAt())
+                .isActive(isActive)
+                .isExpired(isExpired)
+                .linkStatus(linkStatus)
+                .consentType(consentType)
+                .isPermanent(isPermanent)
+                .isTemporary(isTemporary)
+                .expiresAt(expiresAt)
+                .daysRemaining(daysRemaining)
+                .isAavaVerified(address.getIsAavaVerified())
+                .confidenceScore(address.getConfidenceScore())
+                .build();
     }
 
     @GetMapping("/digipin")
@@ -127,14 +200,33 @@ public class DigitalAddressController {
 
     @PutMapping("/update")
     public ResponseEntity<?> updateDigitalAddress(
-            @Valid @RequestBody UpdateDigitalAddressRequest request,
+            @Valid @RequestBody CreateDigitalAddressRequest request,
             @RequestHeader("Authorization") String authHeader) {
         try {
             String token = authHeader.replace("Bearer ", "");
             User user = authService.getUserFromToken(token);
+
+            if (request.getDigitalAddress() == null || request.getDigitalAddress().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("digitalAddress field is required to specify which address to update");
+            }
+
+            request.setUserId(user.getId());
+            request.setUsername(user.getUserName());
+
             String regeneratedDigipin = getDigiPin(request.getLatitude(), request.getLongitude());
-            digitalAddressService.updateDigitalAddressByUserId(user.getId(), request, regeneratedDigipin);
-            return ResponseEntity.status(HttpStatus.OK).body("Digital address updated successfully");
+            request.setDigipin(regeneratedDigipin);
+
+            DigitalAddress updatedAddress = digitalAddressService.updateDigitalAddressByDigitalAddress(
+                    user.getId(), request.getDigitalAddress(), request, regeneratedDigipin);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Digital address updated successfully");
+            response.put("digitalAddress", updatedAddress.getDigitalAddress());
+            response.put("digipin", updatedAddress.getGeneratedDigipin());
+            response.put("hasActiveConsent", updatedAddress.isHasActiveConsent());
+            
+            return ResponseEntity.status(HttpStatus.OK).body(response);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         } catch (RuntimeException e) {

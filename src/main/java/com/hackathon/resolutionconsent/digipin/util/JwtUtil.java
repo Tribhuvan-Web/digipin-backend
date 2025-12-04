@@ -75,7 +75,6 @@ public class JwtUtil {
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(","));
 
-        // Use email if available, otherwise use phone number as subject
         String subject = (email != null && !email.isEmpty()) ? email : phone;
 
         return Jwts.builder()

@@ -42,7 +42,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/register",
-                                "/api/auth/login", "/api/aiu/**", "/api/aava/**")
+                                "/api/auth/login", "/api/auth/forgot-password", "/api/aiu/**", "/api/aava/**")
                         .permitAll()
                         .requestMatchers("/api/auth/verify-aadhaar").authenticated()
                         .anyRequest().authenticated())

@@ -8,6 +8,8 @@
 
 > A secure and innovative digital address resolution system with PIN-based consent management, AAVA verification, real-time confidence scoring, and tamper-proof audit trails powered by ImmuDB.
 
+---
+
 ## 🌟 Overview
 
 DigiPin revolutionizes how digital addresses are created, managed, and shared in India. It combines location-based digital addressing with a secure consent mechanism, allowing users to share their addresses with authorized parties using a simple 6-digit DA PIN. The system integrates multiple verification layers and provides cryptographically verifiable audit trails for complete transparency and trust.
@@ -151,23 +153,24 @@ digipin/
 │   ├── DigipinApplication.java              # Spring Boot entry point
 │   │
 │   ├── config/                               # Configuration classes
-│   │   ├── SecurityConfig.java               # Security configuration & CORS
+│   │   ├── SecurityConfig.java               # Security configuration & CORS 
 │   │   ├── JwtAuthenticationFilter.java      # JWT validation filter
 │   │   └── ImmuDBConfig.java                 # ImmuDB connection config
 │   │
 │   ├── controller/                           # REST Controllers (API Layer)
-│   │   ├── AuthController.java               # Authentication APIs
+│   │   ├── AuthController.java               # Authentication APIs 
 │   │   │   ├── POST /api/auth/register       → User registration
 │   │   │   ├── POST /api/auth/login          → Login & JWT generation
 │   │   │   ├── POST /api/auth/verify-aadhaar → Aadhaar verification
-│   │   │   └── GET  /api/auth/profile        → User profile
+│   │   │   ├── GET  /api/auth/profile        → User profile
+│   │   │   └── POST /api/auth/forgot-password → Password reset 
 │   │   │
-│   │   ├── DigitalAddressController.java     # Digital address APIs
+│   │   ├── DigitalAddressController.java     # Digital address APIs 
 │   │   │   ├── POST   /api/digital-address/create          → Create address
 │   │   │   ├── GET    /api/digital-address/{address}       → Get address
-│   │   │   ├── GET    /api/digital-address                 → List addresses
+│   │   │   ├── GET    /api/digital-address                 → List with status 
 │   │   │   ├── GET    /api/digital-address/digipin         → Get DigiPin
-│   │   │   ├── PUT    /api/digital-address/update          → Update address
+│   │   │   ├── PUT    /api/digital-address/update          → Update address 
 │   │   │   ├── DELETE /api/digital-address/delete          → Delete address
 │   │   │   └── POST   /api/digital-address/flag-for-aava   → Flag for AAVA
 │   │   │
@@ -187,8 +190,8 @@ digipin/
 │   │       └── GET  /api/audit/confidence-score/{id}     → Trust score
 │   │
 │   ├── service/                              # Business Logic Layer
-│   │   ├── AuthService.java                  # Authentication & Aadhaar
-│   │   ├── DigitalAddressService.java        # Address management
+│   │   ├── AuthService.java                  # Authentication & Aadhaar 
+│   │   ├── DigitalAddressService.java        # Address management 
 │   │   ├── ConsentService.java               # Consent & PIN verification
 │   │   ├── ImmuDBService.java                # Audit logging & verification
 │   │   └── CustomUserDetailsService.java     # Spring Security integration
@@ -202,7 +205,7 @@ digipin/
 │   │
 │   ├── models/                               # Entity Models (JPA Entities)
 │   │   ├── User.java                         # User entity
-│   │   ├── DigitalAddress.java               # Digital address entity
+│   │   ├── DigitalAddress.java               # Digital address entity 
 │   │   ├── Consent.java                      # Consent entity
 │   │   ├── AadhaarMockData.java              # Aadhaar mock entity
 │   │   └── UserAddress.java                  # AIU user address entity
@@ -211,8 +214,9 @@ digipin/
 │   │   ├── RegisterRequest.java              # Registration request
 │   │   ├── LoginRequest.java                 # Login request
 │   │   ├── AadhaarVerificationRequest.java   # Aadhaar verification
-│   │   ├── CreateDigitalAddressRequest.java  # Create address request
-│   │   ├── UpdateDigitalAddressRequest.java  # Update address request
+│   │   ├── CreateDigitalAddressRequest.java  # Create/Update address request 
+│   │   ├── ForgotPasswordRequest.java        # Forgot password request 
+│   │   ├── DigitalAddressWithStatusDto.java  # Address with link status 
 │   │   ├── AavaVerificationRequest.java      # AAVA verification request
 │   │   ├── ResolveAddressWithConsentRequest.java  # AIU resolve request
 │   │   ├── ServiceFulfillmentFeedbackRequest.java # Feedback request
@@ -366,6 +370,30 @@ Response (200 OK):
 }
 ```
 
+#### 5. Forgot Password (🆕 New)
+```http
+POST /api/auth/forgot-password
+Content-Type: application/json
+
+{
+  "emailOrPhone": "9876543210",
+  "aadhaarNumber": "234567890123",
+  "dateOfBirth": "1990-05-15",
+  "newPassword": "newSecurePassword123",
+  "confirmPassword": "newSecurePassword123"
+}
+
+Response (200 OK):
+"Password reset successful. You can now login with your new password."
+
+Error Responses:
+- 400: "New password and confirm password do not match"
+- 403: "Aadhaar verification is required before password reset"
+- 404: "No account found with this email or phone number"
+- 401: "Aadhaar number does not match the registered account"
+- 401: "Date of birth does not match Aadhaar records"
+```
+
 ---
 
 ### 🏠 Digital Address APIs (`/api/digital-address`)
@@ -381,7 +409,10 @@ Content-Type: application/json
   "latitude": 28.6139,
   "longitude": 77.2090,
   "address": "Connaught Place, New Delhi, India",
-  "daPin": "123456",
+  "addressName": "My Home",
+  "pincode": "110001",
+  "purpose": "Personal",
+  "uniPin": "123456",
   "consentType": "PERMANENT",        // or "TEMPORARY"
   "consentDurationDays": 30          // Required for TEMPORARY
 }
@@ -418,7 +449,7 @@ Response (200 OK):
 }
 ```
 
-#### 3. List All Addresses
+#### 3. List All Addresses with Link Status 
 ```http
 GET /api/digital-address
 Authorization: Bearer <token>
@@ -429,12 +460,42 @@ Response (200 OK):
     "id": 1,
     "digitalAddress": "Tribhuvan_nath@home",
     "generatedDigipin": "FC9-823-7654",
-    ...
+    "suffix": "home",
+    "addressName": "My Home",
+    "address": "Connaught Place, New Delhi",
+    "pinCode": "110001",
+    "purpose": "Personal",
+    "latitude": 28.6139,
+    "longitude": 77.2090,
+    "createdAt": "2025-12-02T10:30:00",
+    
+    // Link Status 
+    "isActive": true,
+    "isExpired": false,
+    "linkStatus": "ACTIVE",
+    
+    // Consent Type 
+    "consentType": "TEMPORARY",
+    "isPermanent": false,
+    "isTemporary": true,
+    
+    // Expiry 
+    "expiresAt": "2026-01-01T10:30:00",
+    "daysRemaining": 28,
+    
+    // Verification
+    "isAavaVerified": false,
+    "confidenceScore": 50.0
   },
   {
     "id": 2,
     "digitalAddress": "Tribhuvan_nath@office",
     "generatedDigipin": "FC9-824-1234",
+    "linkStatus": "ACTIVE",
+    "consentType": "PERMANENT",
+    "isPermanent": true,
+    "isTemporary": false,
+    "daysRemaining": null,
     ...
   }
 ]
@@ -448,23 +509,33 @@ Response (200 OK):
 "FC9-823-7654"
 ```
 
-#### 5. Update Digital Address
+#### 5. Update Digital Address 
 ```http
 PUT /api/digital-address/update
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
+  "digitalAddress": "Tribhuvan_nath@home",  // Required: specify which address to update
+  "suffix": "home",
   "latitude": 28.7041,
   "longitude": 77.1025,
   "address": "Updated Address, Delhi",
-  "daPin": "123456",               // Required for verification
+  "addressName": "My Updated Home",
+  "pincode": "110002",
+  "purpose": "Updated Purpose",
+  "uniPin": "123456",                        // Required for verification
   "consentType": "TEMPORARY",
   "consentDurationDays": 60
 }
 
 Response (200 OK):
-"Digital address updated successfully"
+{
+  "message": "Digital address updated successfully",
+  "digitalAddress": "Tribhuvan_nath@home",
+  "digipin": "FC9-824-1234",
+  "hasActiveConsent": true
+}
 ```
 
 #### 6. Delete Digital Address
@@ -2038,7 +2109,6 @@ Found a bug or have a feature request? Please open an issue:
 
 - **Spring Team** - For the amazing Spring Boot framework
 - **ImmuDB Team** - For the tamper-proof database solution
-- **Aaditya kumar** - For continuous support and contributions
 
 ## 🏆 Project Stats
 

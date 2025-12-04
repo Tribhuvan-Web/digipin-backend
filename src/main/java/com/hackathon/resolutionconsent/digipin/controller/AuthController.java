@@ -1,6 +1,7 @@
 package com.hackathon.resolutionconsent.digipin.controller;
 
 import com.hackathon.resolutionconsent.digipin.dto.AadhaarVerificationRequest;
+import com.hackathon.resolutionconsent.digipin.dto.ForgotPasswordRequest;
 import com.hackathon.resolutionconsent.digipin.dto.LoginRequest;
 import com.hackathon.resolutionconsent.digipin.dto.RegisterRequest;
 import com.hackathon.resolutionconsent.digipin.dto.UserProfileDto;
@@ -111,7 +112,7 @@ public class AuthController {
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("unauthorized");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
         }
     }
 
@@ -145,6 +146,16 @@ public class AuthController {
             return ResponseEntity.ok(userProfileDto);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or expired token");
+        }
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        try {
+            return authService.forgotPassword(request);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Password reset failed: " + e.getMessage());
         }
     }
 }

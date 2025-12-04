@@ -38,38 +38,38 @@ public class DigitalAddress {
     private Integer totalRatingScore = 0;
 
     @Column
-    private Double averageRating = 0.0; // Average rating (0-5) from user ratings
+    private Double averageRating = 0.0;
 
     @Column
-    private Double confidenceScore = 50.0; // Dynamic trust score (0-100), baseline is 50
+    private Double confidenceScore = 50.0;
 
     @Column
-    private Integer totalFulfillments = 0; // Count of service fulfillment feedbacks
+    private Integer totalFulfillments = 0;
 
-    // AAVA (Address Authentication and Verification Agent) fields
     @Column
-    private Boolean isAavaVerified = false; // Physical verification by government agent
+    private Boolean isAavaVerified = false;
 
     @Column
     @Enumerated(EnumType.STRING)
-    private VerificationType verificationType = VerificationType.AADHAAR_ONLY; // Default to Aadhaar verification
+    private VerificationType verificationType = VerificationType.AADHAAR_ONLY;
 
     @Column
-    private String aavaAgentId; // Government agent who performed verification
+    private String aavaAgentId;
 
     @Column
-    private LocalDateTime aavaVerifiedAt; // Timestamp of physical verification
+    private LocalDateTime aavaVerifiedAt;
 
     @Column(length = 1000)
-    private String aavaVerificationNotes; // Agent's verification observations
+    private String aavaVerificationNotes;
 
     @Column
-    private Boolean requiresAavaVerification = false; // Flag for high-security use cases
+    private Boolean requiresAavaVerification = false;
+
 
     public enum VerificationType {
-        AADHAAR_ONLY,           // Basic Aadhaar verification only
-        AADHAAR_PLUS_CONFIDENCE, // Aadhaar + confidence score from fulfillments
-        AAVA                    // Physical verification by agent (highest trust)
+        AADHAAR_ONLY,
+        AADHAAR_PLUS_CONFIDENCE,
+        AAVA
     }
 
     @PrePersist
